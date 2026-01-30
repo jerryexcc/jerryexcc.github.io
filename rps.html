@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LIFF 猜拳遊戲</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500;900&display=swap" rel="stylesheet">
+    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    
+    <style>
+      body { font-family: 'Noto Sans TC', sans-serif; }
+      .rps-card { @apply bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm text-center border-t-8 border-green-500; }
+      .btn-choice { @apply flex-1 py-6 text-5xl rounded-2xl bg-slate-50 hover:bg-green-50 border-2 border-transparent hover:border-green-300 transition-all active:scale-90 shadow-sm flex items-center justify-center; }
+    </style>
+  </head>
+  <body class="bg-slate-100 min-h-screen flex items-center justify-center p-6">
+
+    <div class="rps-card">
+      <h1 class="text-2xl font-black text-slate-800 mb-2">LIFF 猜拳挑戰</h1>
+      <p id="status" class="text-sm font-bold text-amber-500 mb-8">正在啟動 LINE 環境...</p>
+
+      <div id="game-ui" class="flex gap-3 mb-10 opacity-50 pointer-events-none">
+        <button onclick="play('石頭', '✊')" class="btn-choice">✊</button>
+        <button onclick="play('剪刀', '✌️')" class="btn-choice">✌️</button>
+        <button onclick="play('布', '🖐️')" class="btn-choice">🖐️</button>
+      </div>
+
+      <div id="result-box" class="hidden">
+        <div id="result-text" class="text-4xl font-black mb-2 text-slate-700"></div>
+        <p class="text-xs text-slate-400">正在傳送結果至聊天室...</p>
+      </div>
+    </div>
+
+    <script>
+      // 💡 請確保這是你 Login Channel 裡的 LIFF ID
+      const LIFF_ID = '2007872114-9BQqsRof';
+
+      async function initLiff() {
+        const statusEl = document.getElementById('status');
+        try {
+          await liff.init({ liffId: LIFF_ID });
+          
+          if (!liff.isLoggedIn()) {
+            liff.login();
+          } else {
+            const profile = await liff.getProfile();
+            statusEl.innerText = `🎮 你好，${profile.displayName}！請出拳`;
+            statusEl.classList.replace('text-amber-500', 'text-green-600');
+            
+            // 解鎖遊戲介面
+            document.getElementById('game-ui').classList.remove('opacity-50', 'pointer-events-none');
+          }
+        } catch (err) {
+          statusEl.innerText = "❌ LIFF 初始化失敗: " + err.message;
+          console.error(err);
+        }
+      }
+
+      function play(userChoice, emoji) {
+        const choices = ['石頭', '剪刀', '布'];
+        const botChoice = choices[Math.floor(Math.random() * 3)];
+        const botEmoji = botChoice === '石頭' ? '✊' : (botChoice === '剪刀' ? '✌️' : '🖐️');
+        
+        let result = "";
+        if (userChoice === botChoice) result = "平手";
+        else if (
+          (userChoice === '石頭' && botChoice === '剪刀') ||
+          (userChoice === '剪刀' && botChoice === '布') ||
+          (userChoice === '布' && botChoice === '石頭')
+        ) result = "贏";
+        else result = "輸";
+
+        showResult(result, userChoice, emoji, botEmoji);
+      }
+
+      function showResult(result, userChoice, userEmoji, botEmoji) {
+        const uiEl = document.getElementById('game-ui');
+        const resultBox = document.getElementById('result-box');
+        const resultText = document.getElementById('result-text');
+
+        uiEl.classList.add('opacity-50', 'pointer-events-none');
+        resultBox.classList.remove('hidden');
+        
+        if (result === '贏') resultText.innerText = "你贏了！🏆";
+        else if (result === '平手') resultText.innerText = "平手 😐";
+        else resultText.innerText = "你輸了 💀";
+
+        // 💡 透過 LIFF 發送訊息回聊天室
+        sendResultMessage(result, userEmoji, botEmoji);
+      }
+
+      function sendResultMessage(result, userEmoji, botEmoji) {
+        if (!liff.isInClient()) {
+          alert("目前不在 LINE App 中，無法發送訊息，遊戲結束！");
+          return;
+        }
+
+        const message = `我在猜拳挑戰中打出了 ${userEmoji}\n電腦出的是 ${botEmoji}\n結果：我${result}了！`;
+
+        liff.sendMessages([{
+          type: 'text',
+          text: message
+        }])
+        .then(() => {
+          console.log("訊息傳送成功");
+          // 發送成功後延遲 1.5 秒自動關閉視窗，優化體驗
+          setTimeout(() => liff.closeWindow(), 1500);
+        })
+        .catch((err) => {
+          console.error("發送失敗", err);
+          alert("訊息發送失敗，請確認是否已開啟 chat_message.write 權限");
+        });
+      }
+
+      window.onload = initLiff;
+    </script>
+  </body>
+</html>
