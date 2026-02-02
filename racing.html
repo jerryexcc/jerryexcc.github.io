@@ -3,65 +3,76 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>撲克牌賽車 - 陣營對決</title>
+    <title>撲克牌賽車 - 關卡解鎖版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@900&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Noto Sans TC', sans-serif; }
-        .track-cell { @apply w-12 h-16 bg-slate-700/50 border border-slate-600 flex items-center justify-center text-2xl relative; }
-        .trap-card { @apply w-10 h-14 bg-blue-900 rounded-md border-2 border-white flex items-center justify-center text-xs shadow-lg transition-all duration-500; }
-        .flipped { @apply bg-white rotate-[360deg]; }
-        .car { @apply text-4xl animate-bounce drop-shadow-md; }
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f1f5f9; }
+        .lane-cell { @apply w-12 h-14 sm:w-16 sm:h-20 bg-white border-2 border-slate-200 flex items-center justify-center text-3xl sm:text-4xl shadow-sm rounded-xl transition-all duration-300; }
+        .trap-card { @apply w-10 h-14 sm:w-12 sm:h-18 bg-indigo-500 rounded-lg border-2 border-white flex items-center justify-center text-xs sm:text-sm shadow-md transition-all duration-500 font-bold text-white; }
+        .flipped { @apply bg-slate-50 text-slate-800 rotate-[360deg] border-slate-300 shadow-inner; }
+        .car-black { color: #000; filter: drop-shadow(0 0 2px #fff); }
+        .car-red { color: #ef4444; filter: drop-shadow(0 0 2px #fff); }
+        .animate-jump { animation: jump 0.4s ease-out; }
+        @keyframes jump { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
+        .overlay { @apply fixed inset-0 bg-slate-900/90 z-50 flex flex-col items-center justify-center p-6 text-white; }
     </style>
 </head>
-<body class="bg-slate-900 min-h-screen flex flex-col items-center p-4 text-white">
+<body class="min-h-screen flex flex-col items-center py-6 px-4">
 
-    <div id="selection-overlay" class="fixed inset-0 bg-slate-900/95 z-50 flex flex-col items-center justify-center p-6">
-        <h2 class="text-3xl font-black mb-8 text-yellow-400">🏁 選擇你的賽車</h2>
+    <div id="selection-overlay" class="overlay">
+        <h2 class="text-3xl font-black mb-8 text-yellow-400 text-center">🏁 選擇你的戰隊<br><span class="text-sm font-normal text-white">兩車皆抵達或越過該格時觸發陷阱</span></h2>
         <div class="grid grid-cols-2 gap-6 w-full max-w-sm">
-            <button onclick="pickTeam('black')" class="bg-slate-800 border-4 border-slate-600 p-6 rounded-3xl hover:border-white transition-all">
+            <button onclick="pickTeam('black')" class="bg-slate-800 p-6 rounded-3xl border-4 border-transparent hover:border-white transition-all shadow-2xl">
                 <div class="text-5xl mb-4">🏎️</div>
-                <div class="font-black text-white">黑色戰隊</div>
+                <div class="font-black">黑色戰隊</div>
             </button>
-            <button onclick="pickTeam('red')" class="bg-red-900 border-4 border-red-700 p-6 rounded-3xl hover:border-white transition-all">
+            <button onclick="pickTeam('red')" class="bg-red-600 p-6 rounded-3xl border-4 border-transparent hover:border-white transition-all shadow-2xl">
                 <div class="text-5xl mb-4">🏎️</div>
-                <div class="font-black text-white text-red-100">紅色戰隊</div>
+                <div class="font-black">紅色戰隊</div>
             </button>
         </div>
     </div>
 
-    <div class="w-full max-w-lg">
-        <header class="text-center mb-8">
-            <h1 class="text-3xl font-black text-yellow-400">🏎️ 撲克牌賽車</h1>
-            <p id="team-display" class="text-sm font-bold text-slate-400 mt-2">尚未選擇陣營</p>
+    <div class="w-full max-w-2xl">
+        <header class="text-center mb-6">
+            <h1 class="text-3xl font-black text-slate-800">POKER RACING</h1>
+            <p id="team-display" class="text-sm font-bold text-slate-500 mt-1 uppercase tracking-widest">Wait for selection...</p>
         </header>
 
-        <div class="space-y-12 mb-10">
-            <div>
-                <div class="flex gap-2">
-                    <div id="black-track" class="flex gap-2"></div>
-                    <div class="track-cell bg-yellow-500/20 text-xs font-black">FIN</div>
-                </div>
-                <div id="black-traps" class="flex gap-2 mt-2"></div>
+        <div class="bg-slate-300/50 p-4 rounded-3xl shadow-xl space-y-4 mb-8">
+            <div class="flex items-center gap-2">
+                <div class="w-12 text-[10px] font-black text-slate-500">BLACK</div>
+                <div id="black-lane" class="flex gap-1 flex-1 justify-between"></div>
+                <div class="lane-cell bg-slate-200 border-none text-[10px] font-black text-slate-400">FINISH</div>
             </div>
 
-            <div>
-                <div class="flex gap-2">
-                    <div id="red-track" class="flex gap-2"></div>
-                    <div class="track-cell bg-yellow-500/20 text-xs font-black">FIN</div>
-                </div>
-                <div id="red-traps" class="flex gap-2 mt-2"></div>
+            <div class="flex items-center gap-2 py-2 border-y-2 border-dashed border-slate-300">
+                <div class="w-12 text-[10px] font-black text-indigo-500 text-center">TRAPS</div>
+                <div id="trap-lane" class="flex gap-1 flex-1 justify-between"></div>
+                <div class="w-12 sm:w-16"></div> 
+            </div>
+
+            <div class="flex items-center gap-2">
+                <div class="w-12 text-[10px] font-black text-red-500">RED</div>
+                <div id="red-lane" class="flex gap-1 flex-1 justify-between"></div>
+                <div class="lane-cell bg-slate-200 border-none text-[10px] font-black text-slate-400">FINISH</div>
             </div>
         </div>
 
-        <div class="bg-black/40 p-6 rounded-3xl border border-white/10 text-center mb-6">
-            <div id="draw-display" class="text-6xl mb-4 h-20 flex items-center justify-center">🎴</div>
-            <p id="game-msg" class="text-indigo-200 font-bold h-6">準備出發...</p>
+        <div class="grid grid-cols-3 gap-4 mb-8">
+            <div class="col-span-1 bg-white p-4 rounded-2xl shadow-md border-b-4 border-slate-200 flex flex-col items-center justify-center">
+                <p class="text-[10px] font-black text-slate-400 mb-2 uppercase">Drawn</p>
+                <div id="draw-display" class="text-5xl">🎴</div>
+            </div>
+            <div class="col-span-2 bg-white p-4 rounded-2xl shadow-md border-b-4 border-yellow-400 flex items-center px-4">
+                <p id="game-msg" class="text-slate-700 font-black text-sm leading-tight">請選擇戰隊開始比賽</p>
+            </div>
         </div>
 
-        <div id="controls" class="flex gap-4">
-            <button onclick="drawStep()" class="flex-1 bg-white text-slate-900 py-4 rounded-2xl font-black text-xl shadow-xl active:scale-95 transition-all">下一抽 (Next)</button>
-            <button onclick="resetGame()" class="bg-slate-700 px-6 rounded-2xl text-xl">🔄</button>
+        <div class="flex gap-4">
+            <button onclick="drawStep()" class="flex-[3] bg-indigo-600 text-white py-5 rounded-2xl font-black text-xl shadow-lg active:scale-95 transition-all">下一抽 (NEXT)</button>
+            <button onclick="resetGame()" class="flex-1 bg-white border-2 border-slate-200 rounded-2xl flex items-center justify-center shadow-sm">🔄</button>
         </div>
     </div>
 
@@ -73,128 +84,130 @@
             "♣️ A", "♣️ 2", "♣️ 3", "♣️ 4", "♣️ 5", "♣️ 6", "♣️ 7", "♣️ 8", "♣️ 9", "♣️ 10", "♣️ J", "♣️ Q", "♣️ K"
         ];
 
-        let deck = [], blackTraps = [], redTraps = [];
-        let blackPos = -1, redPos = -1;
-        let myTeam = ""; 
-        let isGameOver = false;
+        let deck = [], traps = [];
+        let blackPos = -1, redPos = -1, myTeam = "", isGameOver = false;
+        let lastOpenedTrapIndex = -1; // 追蹤目前開到哪一格陷阱
 
         function pickTeam(color) {
             myTeam = color;
-            document.getElementById('selection-overlay').style.display = 'none';
-            document.getElementById('team-display').innerText = `你代表的陣營：${color === 'black' ? '⚫ 黑色戰隊' : '🔴 紅色戰隊'}`;
+            document.getElementById('selection-overlay').classList.add('hidden');
+            document.getElementById('team-display').innerText = `TEAM: ${color === 'black' ? '⚫ BLACK' : '🔴 RED'}`;
             initGame();
         }
 
         function resetGame() {
-            document.getElementById('selection-overlay').style.display = 'flex';
+            document.getElementById('selection-overlay').classList.remove('hidden');
         }
 
         function initGame() {
             deck = [...deckData].sort(() => Math.random() - 0.5);
-            blackTraps = deck.splice(0, 5).map(card => ({ card, flipped: false }));
-            redTraps = deck.splice(0, 5).map(card => ({ card, flipped: false }));
-            blackPos = -1; redPos = -1; isGameOver = false;
-            
+            traps = deck.splice(0, 5).map(card => ({ card, flipped: false }));
+            blackPos = -1; redPos = -1; lastOpenedTrapIndex = -1; isGameOver = false;
             renderAll();
             document.getElementById('draw-display').innerText = "🎴";
-            document.getElementById('game-msg').innerText = "點擊 Next 開始抽牌！";
+            document.getElementById('game-msg').innerText = "點擊 NEXT 抽牌。兩車皆抵達或越過該格時，陷阱即翻開。";
         }
 
         function renderAll() {
-            renderTrack('black', blackPos, blackTraps);
-            renderTrack('red', redPos, redTraps);
+            renderLane('black', blackPos);
+            renderLane('red', redPos);
+            renderTraps();
         }
 
-        function renderTrack(color, pos, traps) {
-            const trackEl = document.getElementById(`${color}-track`);
-            const trapEl = document.getElementById(`${color}-traps`);
-            trackEl.innerHTML = "";
-            trapEl.innerHTML = "";
-
+        function renderLane(color, pos) {
+            const laneEl = document.getElementById(`${color}-lane`);
+            laneEl.innerHTML = "";
             for (let i = 0; i < 5; i++) {
                 const cell = document.createElement('div');
-                cell.className = "track-cell";
+                cell.className = "lane-cell";
                 if (pos === i) {
-                    cell.innerHTML = `<span class="car" style="color: ${color === 'black' ? '#fff' : '#ef4444'}">🏎️</span>`;
+                    const car = document.createElement('span');
+                    car.innerText = "🏎️";
+                    car.className = (color === 'red' ? 'car-red' : 'car-black') + " animate-jump";
+                    cell.appendChild(car);
                 }
-                trackEl.appendChild(cell);
-
-                const trap = document.createElement('div');
-                trap.className = "trap-card" + (traps[i].flipped ? " flipped" : "");
-                if (traps[i].flipped) {
-                    trap.innerText = traps[i].card;
-                    trap.style.color = (traps[i].card.includes('♥️') || traps[i].card.includes('♦️')) ? '#ef4444' : '#1e293b';
-                } else {
-                    trap.innerText = "？";
-                }
-                trapEl.appendChild(trap);
+                laneEl.appendChild(cell);
             }
+        }
+
+        function renderTraps() {
+            const trapEl = document.getElementById('trap-lane');
+            trapEl.innerHTML = "";
+            traps.forEach(t => {
+                const card = document.createElement('div');
+                card.className = "trap-card" + (t.flipped ? " flipped" : "");
+                if (t.flipped) {
+                    card.innerText = t.card;
+                    card.style.color = (t.card.includes('♥️') || t.card.includes('♦️')) ? '#ef4444' : '#1e293b';
+                } else {
+                    card.innerText = "？";
+                }
+                trapEl.appendChild(card);
+            });
         }
 
         async function drawStep() {
             if (isGameOver || deck.length === 0) return;
 
             const card = deck.pop();
-            document.getElementById('draw-display').innerText = card;
+            const drawEl = document.getElementById('draw-display');
+            drawEl.innerText = card;
             const cardIsRed = card.includes('♥️') || card.includes('♦️');
-            
+            drawEl.style.color = cardIsRed ? '#ef4444' : '#1e293b';
+
+            // 1. 抽牌移動
             if (cardIsRed) {
                 redPos++;
-                document.getElementById('game-msg').innerText = "🔴 紅色前進！";
+                document.getElementById('game-msg').innerText = "🔴 紅色動力！前進一步。";
             } else {
                 blackPos++;
-                document.getElementById('game-msg').innerText = "⚫ 黑色前進！";
+                document.getElementById('game-msg').innerText = "⚫ 黑色動力！前進一步。";
             }
-
             renderAll();
             await new Promise(r => setTimeout(r, 600));
 
-            // 陷阱判定：只要有人踩到該索引，兩個賽道的該索引陷阱都翻開
-            const maxPos = Math.max(redPos, blackPos);
-            if (maxPos >= 0 && maxPos < 5) {
-                // 檢查紅色陷阱
-                if (!redTraps[maxPos].flipped) {
-                    redTraps[maxPos].flipped = true;
-                    if (redTraps[maxPos].card.includes('♥️') || redTraps[maxPos].card.includes('♦️')) {
-                        redPos--;
-                        document.getElementById('game-msg').innerText = "💥 紅色踩到紅陷阱！後退！";
-                    }
-                }
-                // 檢查黑色陷阱
-                if (!blackTraps[maxPos].flipped) {
-                    blackTraps[maxPos].flipped = true;
-                    if (blackTraps[maxPos].card.includes('♠️') || blackTraps[maxPos].card.includes('♣️')) {
-                        blackPos--;
-                        document.getElementById('game-msg').innerText = "💥 黑色踩到黑陷阱！後退！";
-                    }
-                }
-            }
+            // 2. 判斷是否觸發陷阱 (兩車都抵達或越過該索引)
+            // 我們檢查下一個該開的陷阱索引 (lastOpenedTrapIndex + 1)
+            let checkIdx = lastOpenedTrapIndex + 1;
+            if (checkIdx < 5 && blackPos >= checkIdx && redPos >= checkIdx) {
+                traps[checkIdx].flipped = true;
+                lastOpenedTrapIndex = checkIdx;
+                
+                const trapCard = traps[checkIdx].card;
+                const trapIsRed = trapCard.includes('♥️') || trapCard.includes('♦️');
+                
+                await new Promise(r => setTimeout(r, 400));
+                renderAll();
 
-            renderAll();
-
-            if (redPos >= 5 || blackPos >= 5) {
-                const winner = redPos >= 5 ? 'red' : 'black';
-                handleWin(winner);
-            }
-        }
-
-        function handleWin(winner) {
-            isGameOver = true;
-            const resultMsg = (winner === myTeam) ? "🎊 恭喜！你支持的戰隊獲勝了！" : "💀 哎呀，你支持的戰隊戰敗了...";
-            document.getElementById('game-msg').innerText = resultMsg;
-            
-            // 💡 加入不可見字元發送結果 (贏=\u200B, 輸=\u200C)
-            const hiddenChar = (winner === myTeam) ? "\u200B" : "\u200C";
-            const lineMsg = `賽車結束！${winner === 'red' ? '🔴紅隊' : '⚫黑隊'}抵達終點。${hiddenChar}`;
-            
-            setTimeout(() => {
-                if (liff.isInClient()) {
-                    liff.sendMessages([{ type: 'text', text: lineMsg }])
-                        .then(() => liff.closeWindow());
+                if (trapIsRed) {
+                    redPos--;
+                    document.getElementById('game-msg').innerText = `💥 第 ${checkIdx+1} 格陷阱翻開：紅色！紅車後退。`;
                 } else {
-                    alert(resultMsg);
+                    blackPos--;
+                    document.getElementById('game-msg').innerText = `💥 第 ${checkIdx+1} 格陷阱翻開：黑色！黑車後退。`;
                 }
-            }, 2000);
+                await new Promise(r => setTimeout(r, 600));
+                renderAll();
+            }
+
+            // 3. 勝負判斷
+            if (redPos >= 5 || blackPos >= 5) {
+                isGameOver = true;
+                const winner = redPos >= 5 ? 'red' : 'black';
+                const resultText = winner === myTeam ? "🎊 勝利！你支持的戰隊贏了！" : "💀 戰敗！對手先到了。";
+                document.getElementById('game-msg').innerText = resultText;
+                
+                const hiddenChar = (winner === myTeam) ? "\u200B" : "\u200C";
+                const lineMsg = `賽車結算：${winner === 'red' ? '🔴紅隊' : '⚫黑隊'}獲勝。${hiddenChar}`;
+                
+                setTimeout(() => {
+                    if (window.liff && liff.isInClient()) {
+                        liff.sendMessages([{ type: 'text', text: lineMsg }]).then(() => liff.closeWindow());
+                    } else {
+                        alert(resultText);
+                    }
+                }, 1500);
+            }
         }
     </script>
 </body>
