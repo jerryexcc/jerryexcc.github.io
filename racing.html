@@ -5,9 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>撲克牌賽車 - 關卡解鎖版</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@900&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f1f5f9; }
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f8fafc; }
         .lane-cell { @apply w-12 h-14 sm:w-16 sm:h-20 bg-white border-2 border-slate-200 flex items-center justify-center text-3xl sm:text-4xl shadow-sm rounded-xl transition-all duration-300; }
         .trap-card { @apply w-10 h-14 sm:w-12 sm:h-18 bg-indigo-500 rounded-lg border-2 border-white flex items-center justify-center text-xs sm:text-sm shadow-md transition-all duration-500 font-bold text-white; }
         .flipped { @apply bg-slate-50 text-slate-800 rotate-[360deg] border-slate-300 shadow-inner; }
@@ -16,6 +17,7 @@
         .animate-jump { animation: jump 0.4s ease-out; }
         @keyframes jump { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
         .overlay { @apply fixed inset-0 bg-slate-900/90 z-50 flex flex-col items-center justify-center p-6 text-white; }
+        /* 隱藏 SweetAlert 的網域資訊 (由套件接管 UI) */
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center py-6 px-4">
@@ -36,15 +38,15 @@
 
     <div class="w-full max-w-2xl">
         <header class="text-center mb-6">
-            <h1 class="text-3xl font-black text-slate-800">POKER RACING</h1>
-            <p id="team-display" class="text-sm font-bold text-slate-500 mt-1 uppercase tracking-widest">Wait for selection...</p>
+            <h1 class="text-3xl font-black text-slate-800 tracking-tighter">POKER RACING <span class="text-indigo-600 text-xl block sm:inline">3-LANE EDITION</span></h1>
+            <p id="team-display" class="text-sm font-bold text-slate-500 mt-1 uppercase tracking-widest italic">Choose your team</p>
         </header>
 
-        <div class="bg-slate-300/50 p-4 rounded-3xl shadow-xl space-y-4 mb-8">
+        <div class="bg-slate-200/80 p-4 rounded-3xl shadow-xl space-y-4 mb-8">
             <div class="flex items-center gap-2">
                 <div class="w-12 text-[10px] font-black text-slate-500">BLACK</div>
                 <div id="black-lane" class="flex gap-1 flex-1 justify-between"></div>
-                <div class="lane-cell bg-slate-200 border-none text-[10px] font-black text-slate-400">FINISH</div>
+                <div class="lane-cell bg-slate-300/50 border-none text-[10px] font-black text-slate-400">GOAL</div>
             </div>
 
             <div class="flex items-center gap-2 py-2 border-y-2 border-dashed border-slate-300">
@@ -56,23 +58,25 @@
             <div class="flex items-center gap-2">
                 <div class="w-12 text-[10px] font-black text-red-500">RED</div>
                 <div id="red-lane" class="flex gap-1 flex-1 justify-between"></div>
-                <div class="lane-cell bg-slate-200 border-none text-[10px] font-black text-slate-400">FINISH</div>
+                <div class="lane-cell bg-slate-300/50 border-none text-[10px] font-black text-slate-400">GOAL</div>
             </div>
         </div>
 
         <div class="grid grid-cols-3 gap-4 mb-8">
             <div class="col-span-1 bg-white p-4 rounded-2xl shadow-md border-b-4 border-slate-200 flex flex-col items-center justify-center">
-                <p class="text-[10px] font-black text-slate-400 mb-2 uppercase">Drawn</p>
+                <p class="text-[10px] font-black text-slate-400 mb-2 uppercase tracking-tighter">Current Card</p>
                 <div id="draw-display" class="text-5xl">🎴</div>
             </div>
-            <div class="col-span-2 bg-white p-4 rounded-2xl shadow-md border-b-4 border-yellow-400 flex items-center px-4">
-                <p id="game-msg" class="text-slate-700 font-black text-sm leading-tight">請選擇戰隊開始比賽</p>
+            <div class="col-span-2 bg-white p-4 rounded-2xl shadow-md border-b-4 border-indigo-400 flex items-center px-4">
+                <p id="game-msg" class="text-slate-700 font-black text-sm leading-tight italic">Waiting to start...</p>
             </div>
         </div>
 
         <div class="flex gap-4">
             <button onclick="drawStep()" class="flex-[3] bg-indigo-600 text-white py-5 rounded-2xl font-black text-xl shadow-lg active:scale-95 transition-all">下一抽 (NEXT)</button>
-            <button onclick="resetGame()" class="flex-1 bg-white border-2 border-slate-200 rounded-2xl flex items-center justify-center shadow-sm">🔄</button>
+            <button onclick="resetGame()" class="flex-1 bg-white border-2 border-slate-200 rounded-2xl flex items-center justify-center shadow-sm">
+                <span class="text-2xl">🔄</span>
+            </button>
         </div>
     </div>
 
@@ -86,7 +90,7 @@
 
         let deck = [], traps = [];
         let blackPos = -1, redPos = -1, myTeam = "", isGameOver = false;
-        let lastOpenedTrapIndex = -1; // 追蹤目前開到哪一格陷阱
+        let lastOpenedTrapIndex = -1;
 
         function pickTeam(color) {
             myTeam = color;
@@ -105,7 +109,8 @@
             blackPos = -1; redPos = -1; lastOpenedTrapIndex = -1; isGameOver = false;
             renderAll();
             document.getElementById('draw-display').innerText = "🎴";
-            document.getElementById('game-msg').innerText = "點擊 NEXT 抽牌。兩車皆抵達或越過該格時，陷阱即翻開。";
+            document.getElementById('draw-display').style.color = "#000";
+            document.getElementById('game-msg').innerText = "點擊 NEXT 抽牌。兩車皆通過後才會開啟陷阱！";
         }
 
         function renderAll() {
@@ -155,7 +160,6 @@
             const cardIsRed = card.includes('♥️') || card.includes('♦️');
             drawEl.style.color = cardIsRed ? '#ef4444' : '#1e293b';
 
-            // 1. 抽牌移動
             if (cardIsRed) {
                 redPos++;
                 document.getElementById('game-msg').innerText = "🔴 紅色動力！前進一步。";
@@ -166,14 +170,13 @@
             renderAll();
             await new Promise(r => setTimeout(r, 600));
 
-            // 2. 判斷是否觸發陷阱 (兩車都抵達或越過該索引)
-            // 我們檢查下一個該開的陷阱索引 (lastOpenedTrapIndex + 1)
-            let checkIdx = lastOpenedTrapIndex + 1;
-            if (checkIdx < 5 && blackPos >= checkIdx && redPos >= checkIdx) {
-                traps[checkIdx].flipped = true;
-                lastOpenedTrapIndex = checkIdx;
+            // 陷阱判斷：檢查下一個未開啟的陷阱
+            let nextTrapIdx = lastOpenedTrapIndex + 1;
+            if (nextTrapIdx < 5 && blackPos >= nextTrapIdx && redPos >= nextTrapIdx) {
+                traps[nextTrapIdx].flipped = true;
+                lastOpenedTrapIndex = nextTrapIdx;
                 
-                const trapCard = traps[checkIdx].card;
+                const trapCard = traps[nextTrapIdx].card;
                 const trapIsRed = trapCard.includes('♥️') || trapCard.includes('♦️');
                 
                 await new Promise(r => setTimeout(r, 400));
@@ -181,32 +184,36 @@
 
                 if (trapIsRed) {
                     redPos--;
-                    document.getElementById('game-msg').innerText = `💥 第 ${checkIdx+1} 格陷阱翻開：紅色！紅車後退。`;
+                    document.getElementById('game-msg').innerText = `💥 陷阱：紅色！紅車後退。`;
                 } else {
                     blackPos--;
-                    document.getElementById('game-msg').innerText = `💥 第 ${checkIdx+1} 格陷阱翻開：黑色！黑車後退。`;
+                    document.getElementById('game-msg').innerText = `💥 陷阱：黑色！黑車後退。`;
                 }
                 await new Promise(r => setTimeout(r, 600));
                 renderAll();
             }
 
-            // 3. 勝負判斷
+            // 結算
             if (redPos >= 5 || blackPos >= 5) {
                 isGameOver = true;
                 const winner = redPos >= 5 ? 'red' : 'black';
-                const resultText = winner === myTeam ? "🎊 勝利！你支持的戰隊贏了！" : "💀 戰敗！對手先到了。";
-                document.getElementById('game-msg').innerText = resultText;
+                const isWin = winner === myTeam;
                 
-                const hiddenChar = (winner === myTeam) ? "\u200B" : "\u200C";
+                const hiddenChar = isWin ? "\u200B" : "\u200C";
                 const lineMsg = `賽車結算：${winner === 'red' ? '🔴紅隊' : '⚫黑隊'}獲勝。${hiddenChar}`;
                 
-                setTimeout(() => {
+                // 使用 SweetAlert2 取代原生 alert
+                Swal.fire({
+                    title: isWin ? '勝利！🏆' : '戰敗... 💀',
+                    text: isWin ? '恭喜你支持的戰隊贏得比賽！' : '很可惜，對手搶先一步抵達終點。',
+                    icon: isWin ? 'success' : 'error',
+                    confirmButtonText: '查看結果並關閉',
+                    confirmButtonColor: '#4f46e5'
+                }).then(() => {
                     if (window.liff && liff.isInClient()) {
                         liff.sendMessages([{ type: 'text', text: lineMsg }]).then(() => liff.closeWindow());
-                    } else {
-                        alert(resultText);
                     }
-                }, 1500);
+                });
             }
         }
     </script>
