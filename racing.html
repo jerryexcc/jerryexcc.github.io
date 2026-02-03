@@ -3,79 +3,99 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>撲克牌賽車 - 關卡解鎖版</title>
+    <title>撲克牌賽車 - UI 橫向優化版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@900&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f8fafc; }
-        .lane-cell { @apply w-12 h-14 sm:w-16 sm:h-20 bg-white border-2 border-slate-200 flex items-center justify-center text-3xl sm:text-4xl shadow-sm rounded-xl transition-all duration-300; }
-        .trap-card { @apply w-10 h-14 sm:w-12 sm:h-18 bg-indigo-500 rounded-lg border-2 border-white flex items-center justify-center text-xs sm:text-sm shadow-md transition-all duration-500 font-bold text-white; }
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f1f5f9; }
+        
+        .lane-cell { 
+            @apply w-12 h-14 sm:w-16 sm:h-20 bg-white/80 border-2 border-slate-300 flex items-center justify-center text-3xl sm:text-4xl shadow-sm rounded-xl transition-all duration-300;
+        }
+
+        .track-container {
+            background-image: linear-gradient(90deg, transparent 50%, rgba(255,255,255,0.5) 50%);
+            background-size: 2px 100%;
+            @apply bg-slate-300/50 p-4 rounded-3xl shadow-xl space-y-4 mb-6 border-2 border-slate-400/20;
+        }
+
+        .trap-card { 
+            @apply w-10 h-14 sm:w-12 sm:h-18 bg-indigo-500 rounded-lg border-2 border-white flex items-center justify-center text-xs sm:text-sm shadow-md transition-all duration-500 font-bold text-white;
+        }
         .flipped { @apply bg-slate-50 text-slate-800 rotate-[360deg] border-slate-300 shadow-inner; }
+
         .car-black { color: #000; filter: drop-shadow(0 0 2px #fff); }
         .car-red { color: #ef4444; filter: drop-shadow(0 0 2px #fff); }
         .animate-jump { animation: jump 0.4s ease-out; }
         @keyframes jump { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
-        .overlay { @apply fixed inset-0 bg-slate-900/90 z-50 flex flex-col items-center justify-center p-6 text-white; }
-        /* 隱藏 SweetAlert 的網域資訊 (由套件接管 UI) */
+
+        .overlay { @apply fixed inset-0 bg-slate-900/95 z-50 flex flex-col items-center justify-center p-6 text-white; }
+        
+        /* 💡 統一資訊列高度與對齊 */
+        .msg-container {
+            height: 64px;
+            display: flex;
+            align-items: center;
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center py-6 px-4">
 
     <div id="selection-overlay" class="overlay">
-        <h2 class="text-3xl font-black mb-8 text-yellow-400 text-center">🏁 選擇你的戰隊<br><span class="text-sm font-normal text-white">兩車皆抵達或越過該格時觸發陷阱</span></h2>
+        <h2 class="text-3xl font-black mb-8 text-yellow-400 text-center">🏁 選擇你的戰隊</h2>
         <div class="grid grid-cols-2 gap-6 w-full max-w-sm">
             <button onclick="pickTeam('black')" class="bg-slate-800 p-6 rounded-3xl border-4 border-transparent hover:border-white transition-all shadow-2xl">
                 <div class="text-5xl mb-4">🏎️</div>
-                <div class="font-black">黑色戰隊</div>
+                <div class="font-black text-white">黑色戰隊</div>
             </button>
             <button onclick="pickTeam('red')" class="bg-red-600 p-6 rounded-3xl border-4 border-transparent hover:border-white transition-all shadow-2xl">
                 <div class="text-5xl mb-4">🏎️</div>
-                <div class="font-black">紅色戰隊</div>
+                <div class="font-black text-white text-red-100">紅色戰隊</div>
             </button>
         </div>
     </div>
 
     <div class="w-full max-w-2xl">
         <header class="text-center mb-6">
-            <h1 class="text-3xl font-black text-slate-800 tracking-tighter">POKER RACING <span class="text-indigo-600 text-xl block sm:inline">3-LANE EDITION</span></h1>
-            <p id="team-display" class="text-sm font-bold text-slate-500 mt-1 uppercase tracking-widest italic">Choose your team</p>
+            <h1 class="text-3xl font-black text-slate-800 tracking-tighter italic">POKER RACING</h1>
+            <p id="team-display" class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">準備開賽</p>
         </header>
 
-        <div class="bg-slate-200/80 p-4 rounded-3xl shadow-xl space-y-4 mb-8">
+        <div class="track-container">
             <div class="flex items-center gap-2">
-                <div class="w-12 text-[10px] font-black text-slate-500">BLACK</div>
+                <div class="w-10 text-[10px] font-black text-slate-500">黑軌</div>
                 <div id="black-lane" class="flex gap-1 flex-1 justify-between"></div>
-                <div class="lane-cell bg-slate-300/50 border-none text-[10px] font-black text-slate-400">GOAL</div>
+                <div class="lane-cell bg-slate-200 border-dashed border-slate-400 text-[10px] font-black text-slate-500">終點</div>
             </div>
 
-            <div class="flex items-center gap-2 py-2 border-y-2 border-dashed border-slate-300">
-                <div class="w-12 text-[10px] font-black text-indigo-500 text-center">TRAPS</div>
+            <div class="flex items-center gap-2 py-1 border-y border-slate-400/30">
+                <div class="w-10 text-[10px] font-black text-indigo-400 text-center">陷阱</div>
                 <div id="trap-lane" class="flex gap-1 flex-1 justify-between"></div>
                 <div class="w-12 sm:w-16"></div> 
             </div>
 
             <div class="flex items-center gap-2">
-                <div class="w-12 text-[10px] font-black text-red-500">RED</div>
+                <div class="w-10 text-[10px] font-black text-red-400">紅軌</div>
                 <div id="red-lane" class="flex gap-1 flex-1 justify-between"></div>
-                <div class="lane-cell bg-slate-300/50 border-none text-[10px] font-black text-slate-400">GOAL</div>
+                <div class="lane-cell bg-slate-200 border-dashed border-slate-400 text-[10px] font-black text-slate-500">終點</div>
             </div>
         </div>
 
-        <div class="grid grid-cols-3 gap-4 mb-8">
-            <div class="col-span-1 bg-white p-4 rounded-2xl shadow-md border-b-4 border-slate-200 flex flex-col items-center justify-center">
-                <p class="text-[10px] font-black text-slate-400 mb-2 uppercase tracking-tighter">Current Card</p>
-                <div id="draw-display" class="text-5xl">🎴</div>
+        <div class="flex justify-center gap-3 mb-8 w-full max-w-md mx-auto items-stretch">
+            <div class="w-32 flex-shrink-0 bg-white px-3 rounded-2xl shadow-md border-b-4 border-slate-200 flex flex-row items-center justify-center gap-2">
+                <p class="text-[10px] font-black text-slate-400 whitespace-nowrap">牌面</p>
+                <div id="draw-display" class="text-3xl">🎴</div>
             </div>
-            <div class="col-span-2 bg-white p-4 rounded-2xl shadow-md border-b-4 border-indigo-400 flex items-center px-4">
-                <p id="game-msg" class="text-slate-700 font-black text-sm leading-tight italic">Waiting to start...</p>
+            <div class="flex-1 bg-white p-3 rounded-2xl shadow-md border-b-4 border-indigo-400 msg-container px-4 overflow-hidden">
+                <p id="game-msg" class="text-slate-700 font-bold text-xs sm:text-sm leading-tight italic">點擊 NEXT 開始</p>
             </div>
         </div>
 
-        <div class="flex gap-4">
-            <button onclick="drawStep()" class="flex-[3] bg-indigo-600 text-white py-5 rounded-2xl font-black text-xl shadow-lg active:scale-95 transition-all">下一抽 (NEXT)</button>
+        <div class="flex gap-4 max-w-sm mx-auto">
+            <button onclick="drawStep()" class="flex-[3] bg-indigo-600 text-white py-4 rounded-2xl font-black text-lg shadow-lg active:scale-95 transition-all">下一抽 (NEXT)</button>
             <button onclick="resetGame()" class="flex-1 bg-white border-2 border-slate-200 rounded-2xl flex items-center justify-center shadow-sm">
-                <span class="text-2xl">🔄</span>
+                <span class="text-xl">🔄</span>
             </button>
         </div>
     </div>
@@ -95,7 +115,7 @@
         function pickTeam(color) {
             myTeam = color;
             document.getElementById('selection-overlay').classList.add('hidden');
-            document.getElementById('team-display').innerText = `TEAM: ${color === 'black' ? '⚫ BLACK' : '🔴 RED'}`;
+            document.getElementById('team-display').innerText = `目前戰隊：${color === 'black' ? '黑色' : '紅色'}`;
             initGame();
         }
 
@@ -110,7 +130,7 @@
             renderAll();
             document.getElementById('draw-display').innerText = "🎴";
             document.getElementById('draw-display').style.color = "#000";
-            document.getElementById('game-msg').innerText = "點擊 NEXT 抽牌。兩車皆通過後才會開啟陷阱！";
+            document.getElementById('game-msg').innerText = "比賽開始！祝你好運！";
         }
 
         function renderAll() {
@@ -162,20 +182,18 @@
 
             if (cardIsRed) {
                 redPos++;
-                document.getElementById('game-msg').innerText = "🔴 紅色動力！前進一步。";
+                document.getElementById('game-msg').innerText = "🔴 紅色賽車前進！";
             } else {
                 blackPos++;
-                document.getElementById('game-msg').innerText = "⚫ 黑色動力！前進一步。";
+                document.getElementById('game-msg').innerText = "⚫ 黑色賽車前進！";
             }
             renderAll();
             await new Promise(r => setTimeout(r, 600));
 
-            // 陷阱判斷：檢查下一個未開啟的陷阱
             let nextTrapIdx = lastOpenedTrapIndex + 1;
             if (nextTrapIdx < 5 && blackPos >= nextTrapIdx && redPos >= nextTrapIdx) {
                 traps[nextTrapIdx].flipped = true;
                 lastOpenedTrapIndex = nextTrapIdx;
-                
                 const trapCard = traps[nextTrapIdx].card;
                 const trapIsRed = trapCard.includes('♥️') || trapCard.includes('♦️');
                 
@@ -184,30 +202,27 @@
 
                 if (trapIsRed) {
                     redPos--;
-                    document.getElementById('game-msg').innerText = `💥 陷阱：紅色！紅車後退。`;
+                    document.getElementById('game-msg').innerText = `💥 陷阱翻開：紅色！紅車後退。`;
                 } else {
                     blackPos--;
-                    document.getElementById('game-msg').innerText = `💥 陷阱：黑色！黑車後退。`;
+                    document.getElementById('game-msg').innerText = `💥 陷阱翻開：黑色！黑車後退。`;
                 }
                 await new Promise(r => setTimeout(r, 600));
                 renderAll();
             }
 
-            // 結算
             if (redPos >= 5 || blackPos >= 5) {
                 isGameOver = true;
                 const winner = redPos >= 5 ? 'red' : 'black';
                 const isWin = winner === myTeam;
-                
                 const hiddenChar = isWin ? "\u200B" : "\u200C";
                 const lineMsg = `賽車結算：${winner === 'red' ? '🔴紅隊' : '⚫黑隊'}獲勝。${hiddenChar}`;
                 
-                // 使用 SweetAlert2 取代原生 alert
                 Swal.fire({
-                    title: isWin ? '勝利！🏆' : '戰敗... 💀',
-                    text: isWin ? '恭喜你支持的戰隊贏得比賽！' : '很可惜，對手搶先一步抵達終點。',
+                    title: isWin ? '獲勝！🏆' : '戰敗... 💀',
+                    text: isWin ? '太棒了，你支持的戰隊贏得了比賽！' : '很可惜，你的戰隊慢了一步。',
                     icon: isWin ? 'success' : 'error',
-                    confirmButtonText: '查看結果並關閉',
+                    confirmButtonText: '確定',
                     confirmButtonColor: '#4f46e5'
                 }).then(() => {
                     if (window.liff && liff.isInClient()) {
