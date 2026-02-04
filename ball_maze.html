@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>滾彈珠迷宮 - 終極挑戰版</title>
+    <title>滾彈珠迷宮 - 修正版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@900&display=swap" rel="stylesheet">
@@ -48,22 +48,18 @@
         const levelText = document.getElementById('level-display');
         const timerText = document.getElementById('timer-display');
 
-        // 遊戲狀態變數
         let level = 1;
         let startTime;
         let timerInterval;
         let isGameOver = true;
+        let animationId; // 用於儲存動畫幀 ID
         
-        // 迷宮與物理參數
-        let mazeCols = 5; // 初始難度
-        let mazeRows = 5;
-        let cellSize;
+        let mazeCols, mazeRows, cellSize;
         const ball = { x: 0, y: 0, vx: 0, vy: 0, radius: 0 };
         const gravity = { x: 0, y: 0 };
         const FRICTION = 0.97;
         let maze = [];
 
-        // --- 1. 啟動遊戲與授權 ---
         async function startGame() {
             if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
                 try {
@@ -76,45 +72,47 @@
             
             overlay.classList.add('scale-110', 'opacity-0', 'pointer-events-none');
             initLevel(1);
-            requestAnimationFrame(gameLoop);
         }
 
         function handleOrientation(event) {
-            gravity.y = event.beta * 0.12;
-            gravity.x = event.gamma * 0.12;
+            gravity.y = (event.beta || 0) * 0.12;
+            gravity.x = (event.gamma || 0) * 0.12;
         }
 
-        // --- 2. 關卡初始化 ---
         function initLevel(targetLevel) {
+            // 1. 停止舊的狀態
+            isGameOver = true; 
+            cancelAnimationFrame(animationId); 
+            clearInterval(timerInterval);
+
+            // 2. 更新參數
             level = targetLevel;
             levelText.innerText = level;
-            isGameOver = false;
-
-            // 難度遞增邏輯
-            mazeCols = Math.min(5 + Math.floor((level - 1) / 1), 12);
+            mazeCols = Math.min(5 + Math.floor((level - 1) / 2), 15);
             mazeRows = mazeCols;
 
-            // 計算畫布大小 (適應手機螢幕)
-            const screenWidth = window.innerWidth * 0.85;
-            const maxSize = Math.min(screenWidth, 400);
+            const maxSize = Math.min(window.innerWidth * 0.85, 400);
             cellSize = Math.floor(maxSize / mazeCols);
             canvas.width = mazeCols * cellSize;
             canvas.height = mazeRows * cellSize;
             ball.radius = cellSize * 0.3;
 
+            // 3. 生成新迷宮
             generateMazeDFS();
             resetBall();
+            
+            // 4. 啟動
+            isGameOver = false;
             startTimer();
+            animationId = requestAnimationFrame(gameLoop);
         }
 
         function resetBall() {
             ball.x = cellSize / 2;
             ball.y = cellSize / 2;
-            ball.vx = 0;
-            ball.vy = 0;
+            ball.vx = 0; ball.vy = 0;
         }
 
-        // --- 3. 迷宮生成 (DFS) ---
         function generateMazeDFS() {
             maze = Array(mazeRows).fill(null).map(() =>
                 Array(mazeCols).fill(null).map(() => ({
@@ -145,9 +143,7 @@
             }
         }
 
-        // --- 4. 物理與計時邏輯 ---
         function startTimer() {
-            clearInterval(timerInterval);
             startTime = Date.now();
             timerInterval = setInterval(() => {
                 const elapsed = Math.floor((Date.now() - startTime) / 1000);
@@ -176,7 +172,6 @@
         function gameLoop() {
             if (isGameOver) return;
             
-            // 更新物理
             ball.vx += gravity.x * 0.15;
             ball.vy += gravity.y * 0.15;
             ball.vx *= FRICTION;
@@ -185,10 +180,9 @@
             ball.y += ball.vy;
             checkCollision();
 
-            // 繪製
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // 繪製終點 (旗幟感)
+            // 繪製終點
             ctx.fillStyle = '#fee2e2';
             ctx.fillRect((mazeCols-1)*cellSize, (mazeRows-1)*cellSize, cellSize, cellSize);
             ctx.fillStyle = '#ef4444';
@@ -198,7 +192,7 @@
 
             // 繪製牆壁
             ctx.strokeStyle = '#1e293b';
-            ctx.lineWidth = 5;
+            ctx.lineWidth = Math.max(2, 6 - level/2); // 隨著等級變細一點
             ctx.lineCap = 'round';
             for (let r = 0; r < mazeRows; r++) {
                 for (let c = 0; c < mazeCols; c++) {
@@ -219,12 +213,9 @@
             grad.addColorStop(0, '#818cf8');
             grad.addColorStop(1, '#4f46e5');
             ctx.fillStyle = grad;
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = 'rgba(79, 70, 229, 0.4)';
             ctx.fill();
-            ctx.shadowBlur = 0;
 
-            // 勝利判斷
+            // 終點判定
             const dist = Math.hypot(ball.x - (mazeCols-0.5)*cellSize, ball.y - (mazeRows-0.5)*cellSize);
             if (dist < ball.radius + 5) {
                 isGameOver = true;
@@ -235,17 +226,20 @@
                     icon: 'success',
                     confirmButtonText: '進入下一關',
                     confirmButtonColor: '#4f46e5'
-                }).then(() => initLevel(level + 1));
+                }).then(() => {
+                    initLevel(level + 1);
+                });
+                return; // 結束當前循環
             }
 
-            requestAnimationFrame(gameLoop);
+            animationId = requestAnimationFrame(gameLoop);
         }
 
         function resetCurrentLevel() {
             initLevel(level);
         }
 
-        // 電腦開發測試鍵盤
+        // 鍵盤輔助 (測試)
         window.addEventListener('keydown', e => {
             if (e.key === 'ArrowUp') gravity.y = -10;
             if (e.key === 'ArrowDown') gravity.y = 10;
