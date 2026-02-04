@@ -1,336 +1,224 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>彈珠迷宮：引力攔截版</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@900&display=swap" rel="stylesheet">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>黑洞引力迷宮 Demo</title>
     <style>
-        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f1f5f9; @apply flex flex-col items-center justify-center min-h-screen overflow-hidden; }
-        .canvas-container { 
-            @apply relative flex items-center justify-center bg-slate-200/50 rounded-3xl p-4 border-2 border-dashed border-slate-300; 
-            width: 90vw; height: 90vw; max-width: 500px; max-height: 500px;
+        body {
+            margin: 0;
+            background: #0f172a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font-family: system-ui, sans-serif;
+            color: white;
         }
-        canvas { @apply border-4 border-slate-700 bg-white shadow-2xl rounded-2xl; touch-action: none; }
-        .btn-primary { @apply bg-indigo-600 text-white py-4 px-10 rounded-2xl font-black text-xl shadow-lg active:scale-95 transition-all; }
-        .btn-test { @apply bg-amber-500 text-white py-2 px-6 rounded-xl font-bold text-sm shadow-md mt-4 active:scale-95 transition-all; }
-        .game-info-card { @apply bg-white/80 backdrop-blur-sm px-4 py-2 rounded-xl shadow-sm border border-slate-200 flex flex-col items-center min-w-[80px]; }
+
+        canvas {
+            background: #020617;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, .6);
+        }
     </style>
 </head>
+
 <body>
-
-    <div class="flex gap-4 mb-6 w-full max-w-sm justify-center">
-        <div class="game-info-card">
-            <span class="text-[10px] text-slate-400 font-bold uppercase">Level</span>
-            <span id="level-display" class="text-xl font-black text-indigo-600">1</span>
-        </div>
-        <div class="game-info-card">
-            <span class="text-[10px] text-slate-400 font-bold uppercase">Time</span>
-            <span id="timer-display" class="text-xl font-black text-slate-700">00:00</span>
-        </div>
-    </div>
-    
-    <div class="canvas-container" id="container">
-        <canvas id="mazeCanvas"></canvas>
-        <div id="permission-overlay" class="absolute inset-0 bg-slate-900/95 flex flex-col items-center justify-center rounded-3xl z-20 transition-all duration-500">
-            <div class="text-5xl mb-4">🌀</div>
-            <h2 class="text-2xl font-black text-white mb-2">彈珠迷宮：引力攔截</h2>
-            <p class="text-slate-400 mb-8 text-center text-sm px-10 leading-relaxed">
-                陷阱現在會長在必經之路旁<br><b class="text-white">感受被黑洞吸離主徑的壓力</b>
-            </p>
-            <button onclick="startGame(false)" class="btn-primary">開始挑戰</button>
-            <button onclick="startGame(true)" class="btn-test">測試模式 (陷阱強化)</button>
-        </div>
-    </div>
-
-    <div class="mt-8">
-        <button id="reset-btn" onclick="resetCurrentLevel()" class="text-slate-400 font-bold text-sm hover:text-slate-600 hidden">🔄 重置本關</button>
-    </div>
+    <canvas id="game" width="420" height="420"></canvas>
 
     <script>
-        const canvas = document.getElementById('mazeCanvas');
-        const ctx = canvas.getContext('2d');
-        const container = document.getElementById('container');
-        const overlay = document.getElementById('permission-overlay');
-        const levelText = document.getElementById('level-display');
-        const timerText = document.getElementById('timer-display');
+        /* =========================
+           基本設定
+        ========================= */
+        const canvas = document.getElementById("game");
+        const ctx = canvas.getContext("2d");
 
-        let level = 1, isTestMode = false;
-        let startTime, timerInterval, animationId, isGameOver = true;
-        let mazeCols, mazeRows, currentCellSize;
-        
-        const ball = { x: 0, y: 0, vx: 0, vy: 0, radius: 0, isJumping: false };
-        const gravity = { x: 0, y: 0 };
-        let maze = [], blackHoles = [], potholes = [];
+        const ROWS = 9;
+        const COLS = 9;
+        const currentCellSize = canvas.width / COLS;
 
-        async function startGame(testMode) {
-            isTestMode = testMode;
-            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-                try {
-                    const permission = await DeviceOrientationEvent.requestPermission();
-                    if (permission === 'granted') {
-                        window.addEventListener('deviceorientation', handleOrientation);
-                        window.addEventListener('devicemotion', handleMotion);
-                    }
-                } catch (e) { console.error(e); }
-            } else {
-                window.addEventListener('deviceorientation', handleOrientation);
-                window.addEventListener('devicemotion', handleMotion);
-            }
-            overlay.classList.add('opacity-0', 'pointer-events-none');
-            document.getElementById('reset-btn').classList.remove('hidden');
-            updateLayout();
-            initLevel(1);
+        /* =========================
+           球體
+        ========================= */
+        const ball = {
+            x: currentCellSize * 0.5,
+            y: currentCellSize * 0.5,
+            vx: 0,
+            vy: 0,
+            r: currentCellSize * 0.18
+        };
+
+        /* =========================
+           主路徑（簡化版）
+           S → E 固定一條可走路
+        ========================= */
+        const mainPath = [];
+        for (let i = 0; i < COLS; i++) {
+            mainPath.push({ r: 4, c: i });
         }
 
-        function handleOrientation(event) {
-            gravity.y = (event.beta || 0) * 0.12;
-            gravity.x = (event.gamma || 0) * 0.12;
-        }
+        /* =========================
+           黑洞
+        ========================= */
+        let blackHoles = [];
 
-        function handleMotion(event) {
-            const z = event.acceleration?.z || 0;
-            if (Math.abs(z) > 18 && !ball.isJumping) triggerJump();
-        }
+        function spawnBlackHoleOnMainPath(mainPath) {
+            const start = Math.floor(mainPath.length * 0.3);
+            const end = Math.floor(mainPath.length * 0.8);
 
-        function triggerJump() {
-            ball.isJumping = true;
-            ball.vx *= 2.5; ball.vy *= 2.5;
-            if (window.navigator.vibrate) window.navigator.vibrate(50);
-            setTimeout(() => ball.isJumping = false, 600);
-        }
+            const node =
+                mainPath[start + Math.floor(Math.random() * (end - start))];
 
-        function updateLayout() {
-            const padding = 32; 
-            const availableSize = Math.min(container.clientWidth - padding, container.clientHeight - padding);
-            currentCellSize = Math.floor(availableSize / mazeCols);
-            canvas.width = mazeCols * currentCellSize;
-            canvas.height = mazeRows * currentCellSize;
-            ball.radius = currentCellSize * 0.25;
-        }
-
-        // 💡 BFS 獲取主徑
-        function getMainPath() {
-            const queue = [{ r: 0, c: 0, path: [] }];
-            const visited = new Set(['0,0']);
-            while (queue.length > 0) {
-                const { r, c, path } = queue.shift();
-                const currentPath = [...path, { r, c }];
-                if (r === mazeRows - 1 && c === mazeCols - 1) return currentPath;
-                const cell = maze[r][c];
-                const dirs = [{dr:-1,dc:0,w:'top'},{dr:1,dc:0,w:'bottom'},{dr:0,dc:-1,w:'left'},{dr:0,dc:1,w:'right'}];
-                for (let d of dirs) {
-                    const nr = r + d.dr, nc = c + d.dc, key = `${nr},${nc}`;
-                    if (nr >= 0 && nr < mazeRows && nc >= 0 && nc < mazeCols && !cell.walls[d.w] && !visited.has(key)) {
-                        visited.add(key);
-                        queue.push({ r: nr, c: nc, path: currentPath });
-                    }
-                }
-            }
-            return [];
-        }
-
-        function spawnTrap(array, mainPath) {
-            let r, c, found = false, attempts = 0;
-            while (!found && attempts < 50) {
-                if (Math.random() > 0.4 && mainPath.length > 0) {
-                    const node = mainPath[Math.floor(Math.random() * mainPath.length)];
-                    const off = [{dr:1,dc:0},{dr:-1,dc:0},{dr:0,dc:1},{dr:0,dc:-1}][Math.floor(Math.random()*4)];
-                    r = node.r + off.dr; c = node.c + off.dc;
-                } else {
-                    r = Math.floor(Math.random() * mazeRows);
-                    c = Math.floor(Math.random() * mazeCols);
-                }
-                if (r >= 0 && r < mazeRows && c >= 0 && c < mazeCols && !((r===0&&c===0)||(r===mazeRows-1&&c===mazeCols-1))) {
-                    found = true;
-                }
-                attempts++;
-            }
-            array.push({ row: r, col: c, radiusRatio: 0.4 });
-        }
-
-        function checkPathValidity() {
-            const queue = [{ r: 0, c: 0 }];
-            const visited = new Set(['0,0']);
-            while (queue.length > 0) {
-                const curr = queue.shift();
-                if (curr.r === mazeRows - 1 && curr.c === mazeCols - 1) return true;
-                const cell = maze[curr.r][curr.c];
-                const dirs = [{dr:-1,dc:0,w:'top'},{dr:1,dc:0,w:'bottom'},{dr:0,dc:-1,w:'left'},{dr:0,dc:1,w:'right'}];
-                for (let d of dirs) {
-                    const nr = curr.r + d.dr, nc = curr.c + d.dc, key = `${nr},${nc}`;
-                    if (nr >= 0 && nr < mazeRows && nc >= 0 && nc < mazeCols && !cell.walls[d.w] && !visited.has(key)) {
-                        if (!blackHoles.some(h => h.row === nr && h.col === nc)) {
-                            visited.add(key);
-                            queue.push({ r: nr, c: nc });
-                        }
-                    }
-                }
-            }
-            return false;
-        }
-
-        function initLevel(targetLevel) {
-            cancelAnimationFrame(animationId); clearInterval(timerInterval);
-            level = targetLevel;
-            levelText.innerText = level;
-            mazeCols = Math.min(6 + Math.floor((level - 1) / 1.5), 15);
-            mazeRows = mazeCols;
-            updateLayout();
-            generateMazeDFS();
-            const mainPath = getMainPath();
-
-            let valid = false, attempts = 0;
-            while (!valid && attempts < 100) {
-                blackHoles = []; potholes = [];
-                const pCount = (isTestMode || level >= 5) ? (isTestMode ? 4 : 1 + Math.floor((level - 5) / 2)) : 0;
-                const bCount = (isTestMode || level >= 10) ? (isTestMode ? 3 : 1 + Math.floor((level - 10) / 2)) : 0;
-                for(let i=0; i<pCount; i++) spawnTrap(potholes, mainPath);
-                for(let i=0; i<bCount; i++) spawnTrap(blackHoles, mainPath);
-                if (checkPathValidity()) valid = true;
-                attempts++;
-            }
-            resetBall();
-            isGameOver = false;
-            startTimer();
-            animationId = requestAnimationFrame(gameLoop);
-        }
-
-        function resetBall() {
-            ball.x = currentCellSize / 2; ball.y = currentCellSize / 2;
-            ball.vx = 0; ball.vy = 0; ball.isJumping = false;
-        }
-
-        function generateMazeDFS() {
-            maze = Array(mazeRows).fill(null).map(() => Array(mazeCols).fill(null).map(() => ({ visited: false, walls: { top: true, right: true, bottom: true, left: true } })));
-            const stack = []; let current = { col: 0, row: 0 }; maze[0][0].visited = true; stack.push(current);
-            while (stack.length > 0) {
-                const neighbors = [{ c: current.col, r: current.row - 1, w: 'top', o: 'bottom' },{ c: current.col + 1, r: current.row, w: 'right', o: 'left' },{ c: current.col, r: current.row + 1, w: 'bottom', o: 'top' },{ c: current.col - 1, r: current.row, w: 'left', o: 'right' }]
-                .filter(n => n.c >= 0 && n.c < mazeCols && n.r >= 0 && n.r < mazeRows && !maze[n.r][n.c].visited);
-                if (neighbors.length > 0) {
-                    const next = neighbors[Math.floor(Math.random() * neighbors.length)];
-                    maze[current.row][current.col].walls[next.w] = false; maze[next.r][next.c].walls[next.o] = false; maze[next.r][next.c].visited = true;
-                    stack.push(current); current = { col: next.c, row: next.r };
-                } else { current = stack.pop(); }
-            }
-        }
-
-        function checkPhysics() {
-            const r = Math.floor(ball.y / currentCellSize), c = Math.floor(ball.x / currentCellSize);
-            if (r < 0 || r >= mazeRows || c < 0 || c >= mazeCols) return;
-            const cell = maze[r][c], t = r * currentCellSize + ball.radius, b = (r + 1) * currentCellSize - ball.radius, l = c * currentCellSize + ball.radius, ri = (c + 1) * currentCellSize - ball.radius;
-
-            if (cell.walls.top && ball.y < t) { ball.y = t; ball.vy *= -0.3; }
-            if (cell.walls.bottom && ball.y > b) { ball.y = b; ball.vy *= -0.3; }
-            if (cell.walls.left && ball.x < l) { ball.x = l; ball.vx *= -0.3; }
-            if (cell.walls.right && ball.x > ri) { ball.x = ri; ball.vx *= -0.3; }
-
-            let currentFriction = 0.97;
-            potholes.forEach(p => {
-                const px = (p.col + 0.5) * currentCellSize, py = (p.row + 0.5) * currentCellSize, pr = p.radiusRatio * currentCellSize;
-                const dist = Math.hypot(ball.x - px, ball.y - py);
-                if (dist < pr && !ball.isJumping) {
-                    currentFriction = 0.70;
-                    ball.vx += (px - ball.x) * (1 - dist / pr) * 0.15; ball.vy += (py - ball.y) * (1 - dist / pr) * 0.15;
+            blackHoles.push({
+                row: node.r,
+                col: node.c,
+                radiusRatio: 0.28,
+                bias: {
+                    x: Math.sign(Math.random() - 0.5),
+                    y: Math.sign(Math.random() - 0.5)
                 }
             });
-            blackHoles.forEach(h => {
-                const hx = (h.col + 0.5) * currentCellSize, hy = (h.row + 0.5) * currentCellSize, hr = h.radiusRatio * currentCellSize;
-                const dist = Math.hypot(ball.x - hx, ball.y - hy);
-                if (dist < hr * 2.0) { // 💡 加大引力範圍
-                    const pull = Math.pow(1 - dist / (hr * 2.0), 2) * 0.45;
-                    ball.vx += (hx - ball.x) * pull; ball.vy += (hy - ball.y) * pull;
-                    if (dist < hr * 0.45 && !ball.isJumping) {
-                        if (window.navigator.vibrate) window.navigator.vibrate([100, 50, 100]);
-                        resetBall();
-                    }
-                }
-            });
-            ball.vx *= currentFriction; ball.vy *= currentFriction;
         }
 
-        function gameLoop() {
-            if (isGameOver) return;
-            ball.vx += gravity.x * 0.15; ball.vy += gravity.y * 0.15;
-            ball.x += ball.vx; ball.y += ball.vy;
-            checkPhysics();
+        function setupLevel() {
+            blackHoles = [];
+            for (let i = 0; i < 3; i++) {
+                spawnBlackHoleOnMainPath(mainPath);
+            }
+        }
+        setupLevel();
+
+        /* =========================
+           操作（滑鼠 / 觸控）
+        ========================= */
+        let dragging = false;
+        let last = null;
+
+        canvas.addEventListener("pointerdown", e => {
+            dragging = true;
+            last = { x: e.offsetX, y: e.offsetY };
+        });
+        canvas.addEventListener("pointerup", () => dragging = false);
+        canvas.addEventListener("pointermove", e => {
+            if (!dragging) return;
+            ball.vx += (e.offsetX - last.x) * 0.02;
+            ball.vy += (e.offsetY - last.y) * 0.02;
+            last = { x: e.offsetX, y: e.offsetY };
+        });
+
+        /* =========================
+           黑洞引力
+        ========================= */
+        function applyBlackHoleGravity(ball) {
+            for (const h of blackHoles) {
+                const hx = (h.col + 0.5) * currentCellSize;
+                const hy = (h.row + 0.5) * currentCellSize;
+
+                const dx = hx - ball.x;
+                const dy = hy - ball.y;
+                const dist = Math.hypot(dx, dy);
+
+                const radius = currentCellSize * h.radiusRatio * 3;
+                if (dist > radius || dist === 0) continue;
+
+                const pull = (1 - dist / radius) * 0.05;
+
+                ball.vx += (dx + h.bias.x * currentCellSize * 0.4) * pull;
+                ball.vy += (dy + h.bias.y * currentCellSize * 0.4) * pull;
+            }
+        }
+
+        /* =========================
+           更新
+        ========================= */
+        function update() {
+            applyBlackHoleGravity(ball);
+
+            ball.x += ball.vx;
+            ball.y += ball.vy;
+
+            ball.vx *= 0.985;
+            ball.vy *= 0.985;
+
+            // 邊界
+            ball.x = Math.max(ball.r, Math.min(canvas.width - ball.r, ball.x));
+            ball.y = Math.max(ball.r, Math.min(canvas.height - ball.r, ball.y));
+        }
+
+        /* =========================
+           繪製
+        ========================= */
+        function drawGrid() {
+            ctx.strokeStyle = "#1e293b";
+            for (let i = 0; i <= ROWS; i++) {
+                ctx.beginPath();
+                ctx.moveTo(0, i * currentCellSize);
+                ctx.lineTo(canvas.width, i * currentCellSize);
+                ctx.stroke();
+            }
+            for (let i = 0; i <= COLS; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * currentCellSize, 0);
+                ctx.lineTo(i * currentCellSize, canvas.height);
+                ctx.stroke();
+            }
+        }
+
+        function drawMainPath() {
+            ctx.fillStyle = "#1e40af";
+            for (const p of mainPath) {
+                ctx.fillRect(
+                    p.c * currentCellSize,
+                    p.r * currentCellSize,
+                    currentCellSize,
+                    currentCellSize
+                );
+            }
+        }
+
+        function drawBlackHoles() {
+            for (const h of blackHoles) {
+                const x = (h.col + 0.5) * currentCellSize;
+                const y = (h.row + 0.5) * currentCellSize;
+
+                ctx.beginPath();
+                ctx.arc(x, y, currentCellSize * 0.25, 0, Math.PI * 2);
+                ctx.fillStyle = "#000";
+                ctx.fill();
+
+                ctx.strokeStyle = "#7c3aed";
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+        }
+
+        function drawBall() {
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+            ctx.fillStyle = "#22d3ee";
+            ctx.fill();
+        }
+
+        function render() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // 終點
-            ctx.fillStyle = '#fee2e2'; ctx.fillRect((mazeCols-1)*currentCellSize, (mazeRows-1)*currentCellSize, currentCellSize, currentCellSize);
-            ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.arc((mazeCols-0.5)*currentCellSize, (mazeRows-0.5)*currentCellSize, currentCellSize*0.15, 0, Math.PI*2); ctx.fill();
-
-            // 陷阱
-            potholes.forEach(p => {
-                ctx.beginPath(); ctx.arc((p.col + 0.5) * currentCellSize, (p.row + 0.5) * currentCellSize, p.radiusRatio * currentCellSize, 0, Math.PI*2);
-                ctx.fillStyle = 'rgba(203, 213, 225, 0.6)'; ctx.fill();
-            });
-            blackHoles.forEach(h => {
-                const hx = (h.col + 0.5) * currentCellSize, hy = (h.row + 0.5) * currentCellSize, hr = h.radiusRatio * currentCellSize;
-                const g = ctx.createRadialGradient(hx, hy, 0, hx, hy, hr * 2.0);
-                g.addColorStop(0, 'rgba(0,0,0,0.85)'); g.addColorStop(0.4, 'rgba(30,41,59,0.4)'); g.addColorStop(1, 'transparent');
-                ctx.fillStyle = g; ctx.beginPath(); ctx.arc(hx, hy, hr * 2.0, 0, Math.PI*2); ctx.fill();
-            });
-
-            // 牆壁
-            ctx.strokeStyle = '#1e293b'; ctx.lineWidth = Math.max(2, currentCellSize * 0.1); ctx.lineCap = 'round';
-            for (let r = 0; r < mazeRows; r++) {
-                for (let c = 0; c < mazeCols; c++) {
-                    const x = c * currentCellSize, y = r * currentCellSize, w = maze[r][c].walls;
-                    ctx.beginPath();
-                    if (w.top) { ctx.moveTo(x, y); ctx.lineTo(x + currentCellSize, y); }
-                    if (w.right) { ctx.moveTo(x + currentCellSize, y); ctx.lineTo(x + currentCellSize, y + currentCellSize); }
-                    if (w.bottom) { ctx.moveTo(x, y + currentCellSize); ctx.lineTo(x + currentCellSize, y + currentCellSize); }
-                    if (w.left) { ctx.moveTo(x, y); ctx.lineTo(x, y + currentCellSize); }
-                    ctx.stroke();
-                }
-            }
-
-            const displayRadius = ball.isJumping ? ball.radius * 1.4 : ball.radius;
-            ctx.save();
-            if (ball.isJumping) { ctx.shadowBlur = 12; ctx.shadowColor = 'rgba(0,0,0,0.4)'; ctx.shadowOffsetY = 8; }
-            ctx.beginPath(); ctx.arc(ball.x, ball.y, displayRadius, 0, Math.PI * 2);
-            const ballGrad = ctx.createRadialGradient(ball.x-2, ball.y-2, 1, ball.x, ball.y, displayRadius);
-            ballGrad.addColorStop(0, '#a5b4fc'); ballGrad.addColorStop(1, '#4f46e5');
-            ctx.fillStyle = ballGrad; ctx.fill();
-            ctx.restore();
-
-            const dist = Math.hypot(ball.x - (mazeCols-0.5)*currentCellSize, ball.y - (mazeRows-0.5)*currentCellSize);
-            if (dist < ball.radius + 5) {
-                isGameOver = true; clearInterval(timerInterval);
-                Swal.fire({ title: `Level ${level} 突破!`, icon: 'success', confirmButtonText: '下一關' }).then(() => initLevel(level + 1));
-                return;
-            }
-            animationId = requestAnimationFrame(gameLoop);
+            drawGrid();
+            drawMainPath();
+            drawBlackHoles();
+            drawBall();
         }
 
-        function startTimer() {
-            startTime = Date.now();
-            timerInterval = setInterval(() => {
-                const elapsed = Math.floor((Date.now() - startTime) / 1000);
-                const m = Math.floor(elapsed / 60).toString().padStart(2, '0');
-                const s = (elapsed % 60).toString().padStart(2, '0');
-                timerText.innerText = `${m}:${s}`;
-            }, 1000);
+        /* =========================
+           主迴圈
+        ========================= */
+        function loop() {
+            update();
+            render();
+            requestAnimationFrame(loop);
         }
-
-        function resetCurrentLevel() { initLevel(level); }
-        window.addEventListener('resize', () => {
-            if (!isGameOver) {
-                const colRatio = ball.x / (mazeCols * currentCellSize), rowRatio = ball.y / (mazeRows * currentCellSize);
-                updateLayout();
-                ball.x = colRatio * (mazeCols * currentCellSize); ball.y = rowRatio * (mazeRows * currentCellSize);
-            }
-        });
-        window.addEventListener('keydown', e => {
-            if (e.key === 'ArrowUp') gravity.y = -10; if (e.key === 'ArrowDown') gravity.y = 10;
-            if (e.key === 'ArrowLeft') gravity.x = -10; if (e.key === 'ArrowRight') gravity.x = 10;
-            if (e.key === ' ') triggerJump();
-        });
-        window.addEventListener('keyup', () => { gravity.x = 0; gravity.y = 0; });
-        updateLayout(); 
+        loop();
     </script>
 </body>
+
 </html>
