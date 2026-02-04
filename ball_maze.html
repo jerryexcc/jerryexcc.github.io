@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>彈珠迷宮：操作平衡版</title>
+    <title>彈珠迷宮：專業平衡版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@900&display=swap" rel="stylesheet">
@@ -14,7 +14,13 @@
             width: 90vw; height: 90vw; max-width: 500px; max-height: 500px;
         }
         canvas { @apply border-4 border-slate-700 bg-white shadow-2xl rounded-2xl; touch-action: none; }
-        .btn-primary { @apply bg-indigo-600 text-white py-4 px-10 rounded-2xl font-black text-xl shadow-lg active:scale-95 transition-all; }
+        
+        /* 💡 統一後的按鈕樣式 */
+        .btn-main { @apply bg-amber-500 text-white py-4 px-12 rounded-2xl font-black text-xl shadow-lg active:scale-95 transition-all w-64 text-center; }
+        
+        /* 💡 Debug 用的隱藏樣式 */
+        .debug-hidden { display: none !important; }
+        
         .game-info-card { @apply bg-white/80 backdrop-blur-sm px-4 py-2 rounded-xl shadow-sm border border-slate-200 flex flex-col items-center min-w-[80px]; }
     </style>
 </head>
@@ -35,12 +41,14 @@
         <canvas id="mazeCanvas"></canvas>
         <div id="permission-overlay" class="absolute inset-0 bg-slate-900/95 flex flex-col items-center justify-center rounded-3xl z-20 transition-all duration-500">
             <div class="text-5xl mb-4">⛳</div>
-            <h2 class="text-2xl font-black text-white mb-2">彈珠迷宮：操作平衡版</h2>
+            <h2 class="text-2xl font-black text-white mb-2">彈珠迷宮</h2>
             <p class="text-slate-400 mb-8 text-center text-sm px-10 leading-relaxed">
-                黑洞引力已線性化<br><b class="text-white">靠牆走即可安全通過</b>
+                傾斜手機控制彈珠<br>黑洞引力已優化，考驗操作！
             </p>
-            <button onclick="startGame(false)" class="btn-primary">開始挑戰</button>
-            <button onclick="startGame(true)" class="bg-amber-500 text-white py-2 px-6 rounded-xl font-bold text-sm shadow-md mt-4">測試模式</button>
+            
+            <button onclick="startGame(false)" class="btn-main">開始挑戰</button>
+            
+            <button onclick="startGame(true)" class="btn-main mt-4 bg-slate-600 debug-hidden">DEBUG 模式</button>
         </div>
     </div>
 
@@ -107,7 +115,7 @@
             currentCellSize = Math.floor(availableSize / mazeCols);
             canvas.width = mazeCols * currentCellSize;
             canvas.height = mazeRows * currentCellSize;
-            ball.radius = currentCellSize * 0.25; // 球大小約 1/4 格
+            ball.radius = currentCellSize * 0.25;
         }
 
         function getMainPath() {
@@ -146,7 +154,7 @@
                 }
                 attempts++;
             }
-            array.push({ row: r, col: c, radiusRatio: 0.4 }); // 黑洞直徑約 0.8 格
+            array.push({ row: r, col: c, radiusRatio: 0.4 });
         }
 
         function checkPathValidity() {
@@ -237,14 +245,9 @@
             blackHoles.forEach(h => {
                 const hx = (h.col + 0.5) * currentCellSize, hy = (h.row + 0.5) * currentCellSize, hr = h.radiusRatio * currentCellSize;
                 const dist = Math.hypot(ball.x - hx, ball.y - hy);
-                
-                // 💡 引力修正：只有進入範圍才線性牽引
                 if (dist < hr) {
                     const force = (1 - dist / hr) * 0.15; 
-                    ball.vx += (hx - ball.x) * force;
-                    ball.vy += (hy - ball.y) * force;
-                    
-                    // 💡 核心判定縮小：操作不當滑入中心才死亡
+                    ball.vx += (hx - ball.x) * force; ball.vy += (hy - ball.y) * force;
                     if (dist < hr * 0.35 && !ball.isJumping) {
                         if (window.navigator.vibrate) window.navigator.vibrate([100, 50, 100]);
                         resetBall();
@@ -261,26 +264,20 @@
             checkPhysics();
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // 終點
             ctx.fillStyle = '#fee2e2'; ctx.fillRect((mazeCols-1)*currentCellSize, (mazeRows-1)*currentCellSize, currentCellSize, currentCellSize);
             ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.arc((mazeCols-0.5)*currentCellSize, (mazeRows-0.5)*currentCellSize, currentCellSize*0.15, 0, Math.PI*2); ctx.fill();
 
-            // 陷阱
             potholes.forEach(p => {
                 ctx.beginPath(); ctx.arc((p.col + 0.5) * currentCellSize, (p.row + 0.5) * currentCellSize, p.radiusRatio * currentCellSize, 0, Math.PI*2);
                 ctx.fillStyle = 'rgba(203, 213, 225, 0.6)'; ctx.fill();
             });
             blackHoles.forEach(h => {
                 const hx = (h.col + 0.5) * currentCellSize, hy = (h.row + 0.5) * currentCellSize, hr = h.radiusRatio * currentCellSize;
-                // 視覺漸層
                 const g = ctx.createRadialGradient(hx, hy, 0, hx, hy, hr);
-                g.addColorStop(0, '#000'); 
-                g.addColorStop(0.35, '#1e293b'); // 核心致死區
-                g.addColorStop(1, 'transparent');
+                g.addColorStop(0, '#000'); g.addColorStop(0.35, '#1e293b'); g.addColorStop(1, 'transparent');
                 ctx.fillStyle = g; ctx.beginPath(); ctx.arc(hx, hy, hr, 0, Math.PI*2); ctx.fill();
             });
 
-            // 牆壁
             ctx.strokeStyle = '#1e293b'; ctx.lineWidth = Math.max(2, currentCellSize * 0.1); ctx.lineCap = 'round';
             for (let r = 0; r < mazeRows; r++) {
                 for (let c = 0; c < mazeCols; c++) {
@@ -339,4 +336,3 @@
         updateLayout(); 
     </script>
 </body>
-</html>
