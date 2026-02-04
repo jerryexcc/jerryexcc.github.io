@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>彈珠迷宮：專業平衡版</title>
+    <title>彈珠迷宮：物理穩定版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@900&display=swap" rel="stylesheet">
@@ -14,13 +14,8 @@
             width: 90vw; height: 90vw; max-width: 500px; max-height: 500px;
         }
         canvas { @apply border-4 border-slate-700 bg-white shadow-2xl rounded-2xl; touch-action: none; }
-        
-        /* 💡 統一後的按鈕樣式 */
         .btn-main { @apply bg-amber-500 text-white py-4 px-12 rounded-2xl font-black text-xl shadow-lg active:scale-95 transition-all w-64 text-center; }
-        
-        /* 💡 Debug 用的隱藏樣式 */
         .debug-hidden { display: none !important; }
-        
         .game-info-card { @apply bg-white/80 backdrop-blur-sm px-4 py-2 rounded-xl shadow-sm border border-slate-200 flex flex-col items-center min-w-[80px]; }
     </style>
 </head>
@@ -43,11 +38,9 @@
             <div class="text-5xl mb-4">⛳</div>
             <h2 class="text-2xl font-black text-white mb-2">彈珠迷宮</h2>
             <p class="text-slate-400 mb-8 text-center text-sm px-10 leading-relaxed">
-                傾斜手機控制彈珠<br>黑洞引力已優化，考驗操作！
+                傾斜手機控制彈珠<br>遇到凹槽請用力抽動手機彈跳！
             </p>
-            
             <button onclick="startGame(false)" class="btn-main">開始挑戰</button>
-            
             <button onclick="startGame(true)" class="btn-main mt-4 bg-slate-600 debug-hidden">DEBUG 模式</button>
         </div>
     </div>
@@ -104,7 +97,8 @@
 
         function triggerJump() {
             ball.isJumping = true;
-            ball.vx *= 2.5; ball.vy *= 2.5;
+            ball.vx = Math.max(Math.min(ball.vx * 2.5, 15), -15); // 限制跳躍後的極速
+            ball.vy = Math.max(Math.min(ball.vy * 2.5, 15), -15);
             if (window.navigator.vibrate) window.navigator.vibrate(50);
             setTimeout(() => ball.isJumping = false, 600);
         }
@@ -224,10 +218,23 @@
         }
 
         function checkPhysics() {
-            const r = Math.floor(ball.y / currentCellSize), c = Math.floor(ball.x / currentCellSize);
-            if (r < 0 || r >= mazeRows || c < 0 || c >= mazeCols) return;
-            const cell = maze[r][c], t = r * currentCellSize + ball.radius, b = (r + 1) * currentCellSize - ball.radius, l = c * currentCellSize + ball.radius, ri = (c + 1) * currentCellSize - ball.radius;
+            // 💡 修正 1：畫布邊緣絕對鎖定 (防止 Tunneling 穿透)
+            if (ball.x < ball.radius) { ball.x = ball.radius; ball.vx *= -0.3; }
+            if (ball.x > canvas.width - ball.radius) { ball.x = canvas.width - ball.radius; ball.vx *= -0.3; }
+            if (ball.y < ball.radius) { ball.y = ball.radius; ball.vy *= -0.3; }
+            if (ball.y > canvas.height - ball.radius) { ball.y = canvas.height - ball.radius; ball.vy *= -0.3; }
 
+            const r = Math.floor(ball.y / currentCellSize);
+            const c = Math.floor(ball.x / currentCellSize);
+            if (r < 0 || r >= mazeRows || c < 0 || c >= mazeCols) return;
+
+            const cell = maze[r][c];
+            const t = r * currentCellSize + ball.radius; 
+            const b = (r + 1) * currentCellSize - ball.radius;
+            const l = c * currentCellSize + ball.radius; 
+            const ri = (c + 1) * currentCellSize - ball.radius;
+
+            // 💡 修正 2：牆壁碰撞強制座標回位
             if (cell.walls.top && ball.y < t) { ball.y = t; ball.vy *= -0.3; }
             if (cell.walls.bottom && ball.y > b) { ball.y = b; ball.vy *= -0.3; }
             if (cell.walls.left && ball.x < l) { ball.x = l; ball.vx *= -0.3; }
@@ -336,3 +343,4 @@
         updateLayout(); 
     </script>
 </body>
+</html>
