@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
@@ -8,20 +9,36 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@900&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f1f5f9; @apply flex flex-col items-center justify-center min-h-screen overflow-hidden; }
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #f1f5f9;
+            @apply flex flex-col items-center justify-center min-h-screen overflow-hidden;
+        }
+
         /* 💡 容器現在會撐滿可用空間，但保有內距 */
-        .canvas-container { 
-            @apply relative flex items-center justify-center bg-slate-200/50 rounded-3xl p-4 border-2 border-dashed border-slate-300; 
-            width: 90vw; 
-            height: 90vw; 
-            max-width: 500px; 
+        .canvas-container {
+            @apply relative flex items-center justify-center bg-slate-200/50 rounded-3xl p-4 border-2 border-dashed border-slate-300;
+            width: 90vw;
+            height: 90vw;
+            max-width: 500px;
             max-height: 500px;
         }
-        canvas { @apply border-4 border-slate-700 bg-white shadow-2xl rounded-2xl; touch-action: none; }
-        .btn-primary { @apply bg-indigo-600 text-white py-4 px-10 rounded-2xl font-black text-xl shadow-lg active:scale-95 transition-all; }
-        .game-info-card { @apply bg-white/80 backdrop-blur-sm px-4 py-2 rounded-xl shadow-sm border border-slate-200 flex flex-col items-center min-w-[80px]; }
+
+        canvas {
+            @apply border-4 border-slate-700 bg-white shadow-2xl rounded-2xl;
+            touch-action: none;
+        }
+
+        .btn-primary {
+            @apply bg-indigo-600 text-white py-4 px-10 rounded-2xl font-black text-xl shadow-lg active:scale-95 transition-all;
+        }
+
+        .game-info-card {
+            @apply bg-white/80 backdrop-blur-sm px-4 py-2 rounded-xl shadow-sm border border-slate-200 flex flex-col items-center min-w-[80px];
+        }
     </style>
 </head>
+
 <body>
 
     <div class="flex gap-4 mb-6 w-full max-w-sm justify-center">
@@ -34,22 +51,25 @@
             <span id="timer-display" class="text-xl font-black text-slate-700">00:00</span>
         </div>
     </div>
-    
+
     <div class="canvas-container" id="container">
         <canvas id="mazeCanvas"></canvas>
-        <div id="permission-overlay" class="absolute inset-0 bg-slate-900/95 flex flex-col items-center justify-center rounded-3xl z-20 transition-all duration-500">
+        <div id="permission-overlay"
+            class="absolute inset-0 bg-slate-900/95 flex flex-col items-center justify-center rounded-3xl z-20 transition-all duration-500">
             <div class="text-5xl mb-4">🌀</div>
             <h2 class="text-2xl font-black text-white mb-2">彈珠迷宮：響應式挑戰</h2>
             <p class="text-slate-400 mb-8 text-center text-sm px-10 leading-relaxed">
                 畫面隨螢幕自動縮放<br><b class="text-white">引力場優化</b> 考驗操作！
             </p>
             <button onclick="startGame(false)" class="btn-primary">開始挑戰</button>
-            <button onclick="startGame(true)" class="bg-amber-500 text-white py-2 px-6 rounded-xl font-bold text-sm shadow-md mt-4">測試模式</button>
+            <button onclick="startGame(true)"
+                class="bg-amber-500 text-white py-2 px-6 rounded-xl font-bold text-sm shadow-md mt-4">測試模式</button>
         </div>
     </div>
 
     <div class="mt-8">
-        <button id="reset-btn" onclick="resetCurrentLevel()" class="text-slate-400 font-bold text-sm hover:text-slate-600 hidden">🔄 重置本關</button>
+        <button id="reset-btn" onclick="resetCurrentLevel()"
+            class="text-slate-400 font-bold text-sm hover:text-slate-600 hidden">🔄 重置本關</button>
     </div>
 
     <script>
@@ -63,7 +83,7 @@
         let level = 1, isTestMode = false;
         let startTime, timerInterval, animationId, isGameOver = true;
         let mazeCols, mazeRows, currentCellSize;
-        
+
         const ball = { x: 0, y: 0, vx: 0, vy: 0, radius: 0, isJumping: false };
         const gravity = { x: 0, y: 0 };
         let maze = [], blackHoles = [], potholes = [];
@@ -107,50 +127,105 @@
         // 💡 核心修正：根據容器大小動態計算格子尺寸
         function updateLayout() {
             if (isGameOver) return;
-            
+
             // 獲取容器內部的寬度 (扣除 Padding)
-            const padding = 32; 
+            const padding = 32;
             const availableSize = Math.min(container.clientWidth - padding, container.clientHeight - padding);
-            
+
             // 根據格子數決定每個格子的寬度
             currentCellSize = Math.floor(availableSize / mazeCols);
-            
+
             // 同步更新畫布尺寸
             canvas.width = mazeCols * currentCellSize;
             canvas.height = mazeRows * currentCellSize;
-            
+
             // 彈珠半徑也隨之縮放
             ball.radius = currentCellSize * 0.25;
         }
 
+        // --- 核心修正：加入路徑校驗 ---
+
         function initLevel(targetLevel) {
-            isGameOver = true; cancelAnimationFrame(animationId); clearInterval(timerInterval);
+            isGameOver = true;
+            cancelAnimationFrame(animationId);
+            clearInterval(timerInterval);
+
             level = targetLevel;
             levelText.innerText = level;
-
-            // 隨關卡增加格數
             mazeCols = Math.min(6 + Math.floor((level - 1) / 1.5), 15);
             mazeRows = mazeCols;
 
-            // 先計算一次版面
-            isGameOver = false; // 暫時開啟以執行 updateLayout
             updateLayout();
+            generateMazeDFS(); // 1. 先生成物理迷宮牆壁
 
-            generateMazeDFS();
-            
-            blackHoles = []; potholes = [];
-            if (isTestMode || level >= 5) {
-                const pCount = isTestMode ? 3 : 1 + Math.floor((level - 5) / 2);
-                for(let i=0; i<pCount; i++) spawnTrap(potholes);
-            }
-            if (isTestMode || level >= 10) {
-                const bCount = isTestMode ? 2 : 1 + Math.floor((level - 10) / 2);
-                for(let i=0; i<bCount; i++) spawnTrap(blackHoles);
+            // 2. 嘗試生成陷阱並校驗路徑
+            let validMaze = false;
+            let attempts = 0;
+
+            while (!validMaze && attempts < 50) {
+                blackHoles = []; potholes = [];
+
+                // 根據等級決定數量
+                if (isTestMode || level >= 5) {
+                    const pCount = isTestMode ? 3 : 1 + Math.floor((level - 5) / 2);
+                    for (let i = 0; i < pCount; i++) spawnTrap(potholes);
+                }
+                if (isTestMode || level >= 10) {
+                    const bCount = isTestMode ? 2 : 1 + Math.floor((level - 10) / 2);
+                    for (let i = 0; i < bCount; i++) spawnTrap(blackHoles);
+                }
+
+                // 3. 執行路徑校驗 (確保黑洞沒堵死路)
+                if (checkPathValidity()) {
+                    validMaze = true;
+                }
+                attempts++;
             }
 
             resetBall();
+            isGameOver = false;
             startTimer();
             animationId = requestAnimationFrame(gameLoop);
+        }
+
+        // 💡 廣度優先搜索 (BFS) 校驗起點到終點是否有通路
+        function checkPathValidity() {
+            const queue = [{ r: 0, c: 0 }];
+            const visited = new Set(['0,0']);
+            const endR = mazeRows - 1;
+            const endC = mazeCols - 1;
+
+            while (queue.length > 0) {
+                const curr = queue.shift();
+                if (curr.r === endR && curr.c === endC) return true;
+
+                const cell = maze[curr.r][curr.c];
+                const directions = [
+                    { dr: -1, dc: 0, wall: 'top' },    // 上
+                    { dr: 1, dc: 0, wall: 'bottom' }, // 下
+                    { dr: 0, dc: -1, wall: 'left' },   // 左
+                    { dr: 0, dc: 1, wall: 'right' }    // 右
+                ];
+
+                for (let d of directions) {
+                    const nr = curr.r + d.dr;
+                    const nc = curr.c + d.dc;
+                    const key = `${nr},${nc}`;
+
+                    if (nr >= 0 && nr < mazeRows && nc >= 0 && nc < mazeCols &&
+                        !cell.walls[d.wall] && !visited.has(key)) {
+
+                        // 檢查該格是否有黑洞堵塞 (黑洞判定範圍較嚴格)
+                        const isBlockedByBlackHole = blackHoles.some(h => h.row === nr && h.col === nc);
+
+                        if (!isBlockedByBlackHole) {
+                            visited.add(key);
+                            queue.push({ r: nr, c: nc });
+                        }
+                    }
+                }
+            }
+            return false; // 找不到通路，需重新生成陷阱
         }
 
         function spawnTrap(array) {
@@ -172,8 +247,8 @@
             maze = Array(mazeRows).fill(null).map(() => Array(mazeCols).fill(null).map(() => ({ visited: false, walls: { top: true, right: true, bottom: true, left: true } })));
             const stack = []; let current = { col: 0, row: 0 }; maze[0][0].visited = true; stack.push(current);
             while (stack.length > 0) {
-                const neighbors = [{ c: current.col, r: current.row - 1, w: 'top', o: 'bottom' },{ c: current.col + 1, r: current.row, w: 'right', o: 'left' },{ c: current.col, r: current.row + 1, w: 'bottom', o: 'top' },{ c: current.col - 1, r: current.row, w: 'left', o: 'right' }]
-                .filter(n => n.c >= 0 && n.c < mazeCols && n.r >= 0 && n.r < mazeRows && !maze[n.r][n.c].visited);
+                const neighbors = [{ c: current.col, r: current.row - 1, w: 'top', o: 'bottom' }, { c: current.col + 1, r: current.row, w: 'right', o: 'left' }, { c: current.col, r: current.row + 1, w: 'bottom', o: 'top' }, { c: current.col - 1, r: current.row, w: 'left', o: 'right' }]
+                    .filter(n => n.c >= 0 && n.c < mazeCols && n.r >= 0 && n.r < mazeRows && !maze[n.r][n.c].visited);
                 if (neighbors.length > 0) {
                     const next = neighbors[Math.floor(Math.random() * neighbors.length)];
                     maze[current.row][current.col].walls[next.w] = false; maze[next.r][next.c].walls[next.o] = false; maze[next.r][next.c].visited = true;
@@ -241,21 +316,21 @@
             checkPhysics();
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
+
             // 終點
-            ctx.fillStyle = '#fee2e2'; ctx.fillRect((mazeCols-1)*currentCellSize, (mazeRows-1)*currentCellSize, currentCellSize, currentCellSize);
-            ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.arc((mazeCols-0.5)*currentCellSize, (mazeRows-0.5)*currentCellSize, currentCellSize*0.15, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#fee2e2'; ctx.fillRect((mazeCols - 1) * currentCellSize, (mazeRows - 1) * currentCellSize, currentCellSize, currentCellSize);
+            ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.arc((mazeCols - 0.5) * currentCellSize, (mazeRows - 0.5) * currentCellSize, currentCellSize * 0.15, 0, Math.PI * 2); ctx.fill();
 
             // 陷阱
             potholes.forEach(p => {
-                ctx.beginPath(); ctx.arc((p.col + 0.5) * currentCellSize, (p.row + 0.5) * currentCellSize, p.radiusRatio * currentCellSize, 0, Math.PI*2);
+                ctx.beginPath(); ctx.arc((p.col + 0.5) * currentCellSize, (p.row + 0.5) * currentCellSize, p.radiusRatio * currentCellSize, 0, Math.PI * 2);
                 ctx.fillStyle = 'rgba(203, 213, 225, 0.6)'; ctx.fill();
             });
             blackHoles.forEach(h => {
                 const hx = (h.col + 0.5) * currentCellSize, hy = (h.row + 0.5) * currentCellSize, hr = h.radiusRatio * currentCellSize;
                 const grad = ctx.createRadialGradient(hx, hy, 0, hx, hy, hr * 1.5);
                 grad.addColorStop(0, 'rgba(0,0,0,0.8)'); grad.addColorStop(1, 'transparent');
-                ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(hx, hy, hr * 1.5, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(hx, hy, hr * 1.5, 0, Math.PI * 2); ctx.fill();
             });
 
             // 牆壁
@@ -277,12 +352,12 @@
             ctx.save();
             if (ball.isJumping) { ctx.shadowBlur = 12; ctx.shadowColor = 'rgba(0,0,0,0.4)'; ctx.shadowOffsetY = 8; }
             ctx.beginPath(); ctx.arc(ball.x, ball.y, displayRadius, 0, Math.PI * 2);
-            const ballGrad = ctx.createRadialGradient(ball.x-2, ball.y-2, 1, ball.x, ball.y, displayRadius);
+            const ballGrad = ctx.createRadialGradient(ball.x - 2, ball.y - 2, 1, ball.x, ball.y, displayRadius);
             ballGrad.addColorStop(0, '#a5b4fc'); ballGrad.addColorStop(1, '#4f46e5');
             ctx.fillStyle = ballGrad; ctx.fill();
             ctx.restore();
 
-            const dist = Math.hypot(ball.x - (mazeCols-0.5)*currentCellSize, ball.y - (mazeRows-0.5)*currentCellSize);
+            const dist = Math.hypot(ball.x - (mazeCols - 0.5) * currentCellSize, ball.y - (mazeRows - 0.5) * currentCellSize);
             if (dist < ball.radius + 5) {
                 isGameOver = true; clearInterval(timerInterval);
                 Swal.fire({ title: `Level ${level} 突破!`, icon: 'success', confirmButtonText: '下一關' }).then(() => initLevel(level + 1));
@@ -309,9 +384,9 @@
                 // 紀錄當前彈珠在格內的相對比例，防止縮放後卡在牆裡
                 const colRatio = ball.x / (mazeCols * currentCellSize);
                 const rowRatio = ball.y / (mazeRows * currentCellSize);
-                
+
                 updateLayout();
-                
+
                 ball.x = colRatio * (mazeCols * currentCellSize);
                 ball.y = rowRatio * (mazeRows * currentCellSize);
             }
@@ -327,4 +402,5 @@
         window.addEventListener('keyup', () => { gravity.x = 0; gravity.y = 0; });
     </script>
 </body>
+
 </html>
