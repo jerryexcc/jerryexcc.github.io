@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>滾彈珠迷宮 - 修正版</title>
+    <title>滾彈珠迷宮 - 黑洞挑戰版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@900&display=swap" rel="stylesheet">
@@ -32,13 +32,14 @@
         <div id="permission-overlay" class="absolute inset-0 bg-slate-900/90 flex flex-col items-center justify-center rounded-2xl z-20 transition-all duration-500">
             <div class="text-5xl mb-4">🔮</div>
             <h2 class="text-2xl font-black text-white mb-2">迷宮滾彈珠</h2>
-            <p class="text-slate-400 mb-8 text-center text-sm px-10 leading-relaxed">傾斜手機控制彈珠<br>挑戰最快速度抵達紅色終點！</p>
+            <p class="text-slate-400 mb-8 text-center text-sm px-10 leading-relaxed">傾斜手機控制彈珠<br>第10關起將出現黑洞陷阱！</p>
             <button onclick="startGame()" class="btn-primary">開始挑戰</button>
         </div>
     </div>
 
-    <div class="mt-8">
+    <div class="mt-8 flex flex-col items-center gap-2">
         <button onclick="resetCurrentLevel()" class="text-slate-400 font-bold text-sm hover:text-slate-600 transition-colors">🔄 重置本關</button>
+        <p id="trap-hint" class="text-red-400 text-[10px] font-bold hidden">⚠️ 注意：黑洞會將你送回起點！</p>
     </div>
 
     <script>
@@ -47,18 +48,16 @@
         const overlay = document.getElementById('permission-overlay');
         const levelText = document.getElementById('level-display');
         const timerText = document.getElementById('timer-display');
+        const trapHint = document.getElementById('trap-hint');
 
         let level = 1;
-        let startTime;
-        let timerInterval;
-        let isGameOver = true;
-        let animationId; // 用於儲存動畫幀 ID
-        
+        let startTime, timerInterval, animationId, isGameOver = true;
         let mazeCols, mazeRows, cellSize;
         const ball = { x: 0, y: 0, vx: 0, vy: 0, radius: 0 };
         const gravity = { x: 0, y: 0 };
         const FRICTION = 0.97;
         let maze = [];
+        let blackHoles = []; // 黑洞陣列
 
         async function startGame() {
             if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
@@ -69,7 +68,6 @@
             } else {
                 window.addEventListener('deviceorientation', handleOrientation);
             }
-            
             overlay.classList.add('scale-110', 'opacity-0', 'pointer-events-none');
             initLevel(1);
         }
@@ -80,31 +78,56 @@
         }
 
         function initLevel(targetLevel) {
-            // 1. 停止舊的狀態
             isGameOver = true; 
             cancelAnimationFrame(animationId); 
             clearInterval(timerInterval);
 
-            // 2. 更新參數
             level = targetLevel;
             levelText.innerText = level;
-            mazeCols = Math.min(5 + Math.floor((level - 1) / 2), 15);
+            
+            // 難度成長：每過一關增加格子
+            mazeCols = Math.min(5 + Math.floor((level - 1) / 2), 16);
             mazeRows = mazeCols;
 
             const maxSize = Math.min(window.innerWidth * 0.85, 400);
             cellSize = Math.floor(maxSize / mazeCols);
             canvas.width = mazeCols * cellSize;
             canvas.height = mazeRows * cellSize;
-            ball.radius = cellSize * 0.3;
+            ball.radius = cellSize * 0.28;
 
-            // 3. 生成新迷宮
             generateMazeDFS();
-            resetBall();
             
-            // 4. 啟動
+            // 黑洞生成邏輯：Level 10 開始
+            blackHoles = [];
+            if (level >= 10) {
+                trapHint.classList.remove('hidden');
+                const holeCount = 1 + Math.floor((level - 10) / 2);
+                for (let i = 0; i < holeCount; i++) {
+                    spawnBlackHole();
+                }
+            } else {
+                trapHint.classList.add('hidden');
+            }
+
+            resetBall();
             isGameOver = false;
             startTimer();
             animationId = requestAnimationFrame(gameLoop);
+        }
+
+        function spawnBlackHole() {
+            // 隨機選一個格子，避開(0,0)起點和終點
+            let r, c;
+            do {
+                r = Math.floor(Math.random() * mazeRows);
+                c = Math.floor(Math.random() * mazeCols);
+            } while ((r === 0 && c === 0) || (r === mazeRows - 1 && c === mazeCols - 1));
+            
+            blackHoles.push({
+                x: (c + 0.5) * cellSize,
+                y: (r + 0.5) * cellSize,
+                radius: cellSize * 0.35
+            });
         }
 
         function resetBall() {
@@ -153,7 +176,7 @@
             }, 1000);
         }
 
-        function checkCollision() {
+        function checkPhysics() {
             const r = Math.floor(ball.y / cellSize);
             const c = Math.floor(ball.x / cellSize);
             if (r < 0 || r >= mazeRows || c < 0 || c >= mazeCols) return;
@@ -167,6 +190,15 @@
             if (cell.walls.bottom && ball.y > b) { ball.y = b; ball.vy *= -0.3; }
             if (cell.walls.left && ball.x < l) { ball.x = l; ball.vx *= -0.3; }
             if (cell.walls.right && ball.x > ri) { ball.x = ri; ball.vx *= -0.3; }
+
+            // 黑洞判定
+            blackHoles.forEach(hole => {
+                const dist = Math.hypot(ball.x - hole.x, ball.y - hole.y);
+                if (dist < hole.radius * 0.8) {
+                    if (window.navigator.vibrate) window.navigator.vibrate([100, 50, 100]);
+                    resetBall(); // 掉入黑洞，回起點
+                }
+            });
         }
 
         function gameLoop() {
@@ -178,7 +210,7 @@
             ball.vy *= FRICTION;
             ball.x += ball.vx;
             ball.y += ball.vy;
-            checkCollision();
+            checkPhysics();
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
@@ -190,9 +222,29 @@
             ctx.arc((mazeCols-0.5)*cellSize, (mazeRows-0.5)*cellSize, cellSize*0.2, 0, Math.PI*2);
             ctx.fill();
 
+            // 繪製黑洞 (旋轉感效果)
+            blackHoles.forEach(hole => {
+                const time = Date.now() / 200;
+                ctx.beginPath();
+                ctx.arc(hole.x, hole.y, hole.radius, 0, Math.PI * 2);
+                const g = ctx.createRadialGradient(hole.x, hole.y, 0, hole.x, hole.y, hole.radius);
+                g.addColorStop(0, '#000');
+                g.addColorStop(0.7, '#1e293b');
+                g.addColorStop(1, 'transparent');
+                ctx.fillStyle = g;
+                ctx.fill();
+                
+                // 畫一些螺旋線
+                ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.arc(hole.x, hole.y, hole.radius * Math.abs(Math.sin(time)), 0, Math.PI * 2);
+                ctx.stroke();
+            });
+
             // 繪製牆壁
             ctx.strokeStyle = '#1e293b';
-            ctx.lineWidth = Math.max(2, 6 - level/2); // 隨著等級變細一點
+            ctx.lineWidth = Math.max(2, 5 - level/4);
             ctx.lineCap = 'round';
             for (let r = 0; r < mazeRows; r++) {
                 for (let c = 0; c < mazeCols; c++) {
@@ -215,21 +267,19 @@
             ctx.fillStyle = grad;
             ctx.fill();
 
-            // 終點判定
+            // 勝利判定
             const dist = Math.hypot(ball.x - (mazeCols-0.5)*cellSize, ball.y - (mazeRows-0.5)*cellSize);
             if (dist < ball.radius + 5) {
                 isGameOver = true;
                 clearInterval(timerInterval);
                 Swal.fire({
-                    title: `Level ${level} 完成!`,
+                    title: `Level ${level} 突破!`,
                     text: `耗時: ${timerText.innerText}`,
                     icon: 'success',
-                    confirmButtonText: '進入下一關',
+                    confirmButtonText: '挑戰下一關',
                     confirmButtonColor: '#4f46e5'
-                }).then(() => {
-                    initLevel(level + 1);
-                });
-                return; // 結束當前循環
+                }).then(() => initLevel(level + 1));
+                return;
             }
 
             animationId = requestAnimationFrame(gameLoop);
@@ -239,7 +289,6 @@
             initLevel(level);
         }
 
-        // 鍵盤輔助 (測試)
         window.addEventListener('keydown', e => {
             if (e.key === 'ArrowUp') gravity.y = -10;
             if (e.key === 'ArrowDown') gravity.y = 10;
