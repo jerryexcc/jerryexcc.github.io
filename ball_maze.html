@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>滾彈珠迷宮 - 終極挑戰版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f1f5f9; @apply flex flex-col items-center justify-center min-h-screen overflow-hidden; }
+        canvas { @apply border-4 border-slate-700 bg-white shadow-2xl rounded-2xl; touch-action: none; }
+        .btn-primary { @apply bg-indigo-600 text-white py-4 px-10 rounded-2xl font-black text-xl shadow-lg active:scale-95 transition-all; }
+        .game-info-card { @apply bg-white/80 backdrop-blur-sm px-4 py-2 rounded-xl shadow-sm border border-slate-200 flex flex-col items-center min-w-[80px]; }
+    </style>
+</head>
+<body>
+
+    <div class="flex gap-4 mb-6 w-full max-w-sm justify-center">
+        <div class="game-info-card">
+            <span class="text-[10px] text-slate-400 font-bold uppercase">Level</span>
+            <span id="level-display" class="text-xl font-black text-indigo-600">1</span>
+        </div>
+        <div class="game-info-card">
+            <span class="text-[10px] text-slate-400 font-bold uppercase">Time</span>
+            <span id="timer-display" class="text-xl font-black text-slate-700">00:00</span>
+        </div>
+    </div>
+    
+    <div class="relative">
+        <canvas id="mazeCanvas"></canvas>
+        <div id="permission-overlay" class="absolute inset-0 bg-slate-900/90 flex flex-col items-center justify-center rounded-2xl z-20 transition-all duration-500">
+            <div class="text-5xl mb-4">🔮</div>
+            <h2 class="text-2xl font-black text-white mb-2">迷宮滾彈珠</h2>
+            <p class="text-slate-400 mb-8 text-center text-sm px-10 leading-relaxed">傾斜手機控制彈珠<br>挑戰最快速度抵達紅色終點！</p>
+            <button onclick="startGame()" class="btn-primary">開始挑戰</button>
+        </div>
+    </div>
+
+    <div class="mt-8">
+        <button onclick="resetCurrentLevel()" class="text-slate-400 font-bold text-sm hover:text-slate-600 transition-colors">🔄 重置本關</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('mazeCanvas');
+        const ctx = canvas.getContext('2d');
+        const overlay = document.getElementById('permission-overlay');
+        const levelText = document.getElementById('level-display');
+        const timerText = document.getElementById('timer-display');
+
+        // 遊戲狀態變數
+        let level = 1;
+        let startTime;
+        let timerInterval;
+        let isGameOver = true;
+        
+        // 迷宮與物理參數
+        let mazeCols = 5; // 初始難度
+        let mazeRows = 5;
+        let cellSize;
+        const ball = { x: 0, y: 0, vx: 0, vy: 0, radius: 0 };
+        const gravity = { x: 0, y: 0 };
+        const FRICTION = 0.97;
+        let maze = [];
+
+        // --- 1. 啟動遊戲與授權 ---
+        async function startGame() {
+            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                try {
+                    const permission = await DeviceOrientationEvent.requestPermission();
+                    if (permission === 'granted') window.addEventListener('deviceorientation', handleOrientation);
+                } catch (e) { console.error(e); }
+            } else {
+                window.addEventListener('deviceorientation', handleOrientation);
+            }
+            
+            overlay.classList.add('scale-110', 'opacity-0', 'pointer-events-none');
+            initLevel(1);
+            requestAnimationFrame(gameLoop);
+        }
+
+        function handleOrientation(event) {
+            gravity.y = event.beta * 0.12;
+            gravity.x = event.gamma * 0.12;
+        }
+
+        // --- 2. 關卡初始化 ---
+        function initLevel(targetLevel) {
+            level = targetLevel;
+            levelText.innerText = level;
+            isGameOver = false;
+
+            // 難度遞增邏輯
+            mazeCols = Math.min(5 + Math.floor((level - 1) / 1), 12);
+            mazeRows = mazeCols;
+
+            // 計算畫布大小 (適應手機螢幕)
+            const screenWidth = window.innerWidth * 0.85;
+            const maxSize = Math.min(screenWidth, 400);
+            cellSize = Math.floor(maxSize / mazeCols);
+            canvas.width = mazeCols * cellSize;
+            canvas.height = mazeRows * cellSize;
+            ball.radius = cellSize * 0.3;
+
+            generateMazeDFS();
+            resetBall();
+            startTimer();
+        }
+
+        function resetBall() {
+            ball.x = cellSize / 2;
+            ball.y = cellSize / 2;
+            ball.vx = 0;
+            ball.vy = 0;
+        }
+
+        // --- 3. 迷宮生成 (DFS) ---
+        function generateMazeDFS() {
+            maze = Array(mazeRows).fill(null).map(() =>
+                Array(mazeCols).fill(null).map(() => ({
+                    visited: false,
+                    walls: { top: true, right: true, bottom: true, left: true }
+                }))
+            );
+            const stack = [];
+            let current = { col: 0, row: 0 };
+            maze[0][0].visited = true;
+            stack.push(current);
+            while (stack.length > 0) {
+                const neighbors = [
+                    { c: current.col, r: current.row - 1, w: 'top', o: 'bottom' },
+                    { c: current.col + 1, r: current.row, w: 'right', o: 'left' },
+                    { c: current.col, r: current.row + 1, w: 'bottom', o: 'top' },
+                    { c: current.col - 1, r: current.row, w: 'left', o: 'right' }
+                ].filter(n => n.c >= 0 && n.c < mazeCols && n.r >= 0 && n.r < mazeRows && !maze[n.r][n.c].visited);
+
+                if (neighbors.length > 0) {
+                    const next = neighbors[Math.floor(Math.random() * neighbors.length)];
+                    maze[current.row][current.col].walls[next.w] = false;
+                    maze[next.r][next.c].walls[next.o] = false;
+                    maze[next.r][next.c].visited = true;
+                    stack.push(current);
+                    current = { col: next.c, row: next.r };
+                } else { current = stack.pop(); }
+            }
+        }
+
+        // --- 4. 物理與計時邏輯 ---
+        function startTimer() {
+            clearInterval(timerInterval);
+            startTime = Date.now();
+            timerInterval = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                const m = Math.floor(elapsed / 60).toString().padStart(2, '0');
+                const s = (elapsed % 60).toString().padStart(2, '0');
+                timerText.innerText = `${m}:${s}`;
+            }, 1000);
+        }
+
+        function checkCollision() {
+            const r = Math.floor(ball.y / cellSize);
+            const c = Math.floor(ball.x / cellSize);
+            if (r < 0 || r >= mazeRows || c < 0 || c >= mazeCols) return;
+            const cell = maze[r][c];
+            const t = r * cellSize + ball.radius;
+            const b = (r + 1) * cellSize - ball.radius;
+            const l = c * cellSize + ball.radius;
+            const ri = (c + 1) * cellSize - ball.radius;
+
+            if (cell.walls.top && ball.y < t) { ball.y = t; ball.vy *= -0.3; }
+            if (cell.walls.bottom && ball.y > b) { ball.y = b; ball.vy *= -0.3; }
+            if (cell.walls.left && ball.x < l) { ball.x = l; ball.vx *= -0.3; }
+            if (cell.walls.right && ball.x > ri) { ball.x = ri; ball.vx *= -0.3; }
+        }
+
+        function gameLoop() {
+            if (isGameOver) return;
+            
+            // 更新物理
+            ball.vx += gravity.x * 0.15;
+            ball.vy += gravity.y * 0.15;
+            ball.vx *= FRICTION;
+            ball.vy *= FRICTION;
+            ball.x += ball.vx;
+            ball.y += ball.vy;
+            checkCollision();
+
+            // 繪製
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 繪製終點 (旗幟感)
+            ctx.fillStyle = '#fee2e2';
+            ctx.fillRect((mazeCols-1)*cellSize, (mazeRows-1)*cellSize, cellSize, cellSize);
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath();
+            ctx.arc((mazeCols-0.5)*cellSize, (mazeRows-0.5)*cellSize, cellSize*0.2, 0, Math.PI*2);
+            ctx.fill();
+
+            // 繪製牆壁
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 5;
+            ctx.lineCap = 'round';
+            for (let r = 0; r < mazeRows; r++) {
+                for (let c = 0; c < mazeCols; c++) {
+                    const x = c * cellSize, y = r * cellSize, w = maze[r][c].walls;
+                    ctx.beginPath();
+                    if (w.top) { ctx.moveTo(x, y); ctx.lineTo(x + cellSize, y); }
+                    if (w.right) { ctx.moveTo(x + cellSize, y); ctx.lineTo(x + cellSize, y + cellSize); }
+                    if (w.bottom) { ctx.moveTo(x, y + cellSize); ctx.lineTo(x + cellSize, y + cellSize); }
+                    if (w.left) { ctx.moveTo(x, y); ctx.lineTo(x, y + cellSize); }
+                    ctx.stroke();
+                }
+            }
+
+            // 繪製彈珠
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+            const grad = ctx.createRadialGradient(ball.x-2, ball.y-2, 1, ball.x, ball.y, ball.radius);
+            grad.addColorStop(0, '#818cf8');
+            grad.addColorStop(1, '#4f46e5');
+            ctx.fillStyle = grad;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = 'rgba(79, 70, 229, 0.4)';
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // 勝利判斷
+            const dist = Math.hypot(ball.x - (mazeCols-0.5)*cellSize, ball.y - (mazeRows-0.5)*cellSize);
+            if (dist < ball.radius + 5) {
+                isGameOver = true;
+                clearInterval(timerInterval);
+                Swal.fire({
+                    title: `Level ${level} 完成!`,
+                    text: `耗時: ${timerText.innerText}`,
+                    icon: 'success',
+                    confirmButtonText: '進入下一關',
+                    confirmButtonColor: '#4f46e5'
+                }).then(() => initLevel(level + 1));
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function resetCurrentLevel() {
+            initLevel(level);
+        }
+
+        // 電腦開發測試鍵盤
+        window.addEventListener('keydown', e => {
+            if (e.key === 'ArrowUp') gravity.y = -10;
+            if (e.key === 'ArrowDown') gravity.y = 10;
+            if (e.key === 'ArrowLeft') gravity.x = -10;
+            if (e.key === 'ArrowRight') gravity.x = 10;
+        });
+        window.addEventListener('keyup', () => { gravity.x = 0; gravity.y = 0; });
+    </script>
+</body>
+</html>
