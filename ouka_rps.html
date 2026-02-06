@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>猜拳大對抗 - 座標鎖定版</title>
+    <title>猜拳大對抗 - 座標修正版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@900&display=swap" rel="stylesheet">
     <style>
@@ -13,58 +13,90 @@
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
+            margin: 0;
             @apply flex items-center justify-center min-h-screen overflow-hidden;
         }
 
-        /* 💡 角色總容器：所有座標的基準點 */
-        .character-stage {
-            @apply relative flex items-center justify-center;
+        /* 💡 核心舞台：這是 NPC 與按鈕的共同基準 */
+        .stage-center {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             width: 100vw;
-            height: 100dvh;
+            height: 100vh;
             /* 往下移動 100px */
-            transform: translateY(100px); 
+            margin-top: 100px;
         }
         
-        /* 💡 人物：現在放大 2 倍 */
+        /* 💡 NPC 人物圖片 */
         #npc-image {
-            @apply w-[550px] h-[550px] object-contain transition-all duration-300 z-10;
-            filter: drop-shadow(0 30px 40px rgba(0,0,0,0.6));
+            width: 550px; /* 兩倍大 */
+            height: 550px;
+            object-fit: contain;
+            z-index: 10;
+            filter: drop-shadow(0 20px 30px rgba(0,0,0,0.5));
+            transition: all 0.3s ease;
         }
 
-        /* 💡 猜拳圖示通用樣式：貼合人物底部 */
+        /* 💡 按鈕通用樣式：強制絕對定位以貼合 NPC 底部 */
         .rps-btn {
-            @apply absolute z-20 transition-all active:scale-90 flex flex-col items-center;
-            /* 這裡控制圖示大小 */
+            position: absolute; /* 💡 關鍵：脫離文件流，才能精確貼合 */
+            z-index: 20;
             width: 120px;
             height: 120px;
-            background: rgba(0, 0, 0, 0.4);
-            backdrop-filter: blur(8px);
-            border: 3px solid rgba(255, 255, 255, 0.3);
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(5px);
+            border: 4px solid rgba(255, 255, 255, 0.4);
             border-radius: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
             justify-content: center;
+            transition: transform 0.1s;
         }
 
-        /* 💡 精確位置分配 */
-        .btn-scissors { bottom: 50px; left: calc(50% - 280px); } /* 左下 */
-        .btn-rock     { bottom: -20px; left: 50%; transform: translateX(-50%); } /* 正中下 */
-        .btn-paper    { bottom: 50px; right: calc(50% - 280px); } /* 右下 */
+        .rps-btn:active { transform: scale(0.9) !important; }
 
-        .rps-btn span { @apply text-6xl; }
-        .rps-btn p { @apply text-white font-black text-sm mt-1; }
+        /* 💡 座標精確分配：相對於人物底部的左右分佈 */
+        /* bottom 控制垂直高度，left 控制水平位置 */
+        .btn-scissors { 
+            bottom: 50px; 
+            left: calc(50% - 220px); /* 往左移 220px */
+        }
+        
+        .btn-rock { 
+            bottom: -10px; /* 💡 貼合 NPC 正中心最下方 */
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .btn-paper { 
+            bottom: 50px; 
+            right: calc(50% - 220px); /* 往右移 220px */
+        }
+
+        .rps-btn span { font-size: 3.5rem; }
+        .rps-btn p { color: white; font-weight: 900; font-size: 0.8rem; margin: 0; }
 
         #result-text { 
-            @apply absolute text-7xl font-black italic drop-shadow-2xl z-30;
-            top: 50px;
-            text-align: center;
+            position: absolute;
+            top: -50px; /* 顯示在人物頭頂上方 */
+            font-size: 5rem;
+            font-weight: 900;
+            font-style: italic;
+            color: white;
+            text-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            z-index: 30;
             width: 100%;
+            text-align: center;
         }
     </style>
 </head>
 <body>
 
-    <div class="character-stage">
-        
-        <p id="result-text" class="text-white">Ready?</p>
+    <div class="stage-center">
+        <p id="result-text">READY?</p>
         
         <img id="npc-image" src="images/rps/rps_ready.webp" alt="NPC">
 
@@ -82,7 +114,6 @@
             <span>🖐️</span>
             <p>布</p>
         </button>
-
     </div>
 
     <script>
@@ -98,8 +129,7 @@
             resultTxt.innerText = "猜...拳...";
             resultTxt.style.color = "white";
             npcImg.src = 'images/rps/rps_ready.webp';
-            // 出拳時微微震動縮放
-            npcImg.style.transform = "scale(1.1)"; 
+            npcImg.style.transform = "scale(1.1)";
 
             await new Promise(r => setTimeout(r, 700));
 
