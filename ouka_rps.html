@@ -3,14 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>猜拳大對抗 - 震撼演出版</title>
+    <title>猜拳大對抗 - 靜態巨大版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@900&display=swap" rel="stylesheet">
     <style>
         :root {
-            --npc-h: 110vh; /* 💡 翻倍的人物尺寸 */
+            /* 💡 讓 NPC 佔據螢幕 80% 高度，視覺上非常巨大 */
+            --npc-h: 80vh; 
             --btn-size: 13vh;
-            --btn-bottom: 6vh;
+            --btn-bottom: 5vh; /* 按鈕距離底部的固定距離 */
         }
 
         html, body {
@@ -22,46 +23,50 @@
             font-family: 'Noto Sans TC', sans-serif; 
             background-image: url('images/bg/bg.webp'); 
             background-size: cover; background-position: center; background-attachment: fixed;
-            @apply flex items-center justify-center min-h-screen;
+            @apply flex items-end justify-center min-h-screen; /* 💡 改為對齊底部 */
         }
 
         .stage-center {
             position: relative;
             width: 100vw;
             height: 100dvh;
-            margin-top: 15vh; /* 配合超大人物下移 */
+            /* 移除 margin-top，避免整體被往下推 */
         }
         
+        /* 💡 NPC 樣式：巨大且固定在底部 */
         #npc-image {
             position: absolute;
             left: 50%;
-            top: 40%; 
-            transform: translate(-50%, -50%);
+            bottom: 0; /* 💡 鎖定在螢幕底部 */
+            transform: translateX(-50%); /* 只做水平置中，不做縮放 */
             height: var(--npc-h);
             width: auto;
             object-fit: contain;
-            z-index: 5; /* 稍微降低層級，讓文字突出 */
-            filter: drop-shadow(0 4vh 5vh rgba(0,0,0,0.6));
-            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 5; /* 在按鈕下方 */
+            filter: drop-shadow(0 -2vh 4vh rgba(0,0,0,0.5));
             pointer-events: none;
+            /* 移除 transition，確保圖片切換是瞬間且清晰的 */
         }
 
+        /* 💡 按鈕樣式 */
         .rps-btn {
             position: absolute;
-            z-index: 20;
+            z-index: 20; /* 確保按鈕浮在 NPC 上方 */
             width: var(--btn-size);
             height: var(--btn-size);
-            background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(10px);
-            border: 0.4vh solid rgba(255, 255, 255, 0.5);
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(5px);
+            border: 0.4vh solid rgba(255, 255, 255, 0.6);
             border-radius: 2.5vh;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
+            /* 移除 transform transition 以配合整體靜態感，或保留輕微點擊回饋 */
             transition: transform 0.1s;
             touch-action: manipulation;
         }
 
-        .rps-btn:active { transform: translate(-50%, 0) scale(0.9) !important; }
+        .rps-btn:active { transform: translateX(-50%) scale(0.95) !important; }
 
+        /* 💡 按鈕位置：絕對定位 */
         .btn-scissors { bottom: var(--btn-bottom); left: 20%; transform: translateX(-50%); }
         .btn-rock     { bottom: var(--btn-bottom); left: 50%; transform: translateX(-50%); }
         .btn-paper    { bottom: var(--btn-bottom); left: 80%; transform: translateX(-50%); }
@@ -71,16 +76,16 @@
 
         #result-text { 
             position: absolute;
-            top: 5vh; 
+            top: 8vh; 
             font-size: 8vh; font-weight: 900; font-style: italic;
             color: white; text-shadow: 0 0.5vh 3vh rgba(0,0,0,0.8);
             z-index: 30; width: 100%; text-align: center; pointer-events: none;
             line-height: 1.2;
         }
 
-        /* 💡 玩家出拳顯示框 */
+        /* 玩家出拳顯示框 */
         #player-choice-overlay {
-            @apply absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-40 bg-white/20 backdrop-blur-md border-4 border-white rounded-full w-40 h-40 flex items-center justify-center text-7xl opacity-0 scale-0 transition-all duration-300 pointer-events-none;
+            @apply absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-40 bg-white/20 backdrop-blur-md border-4 border-white rounded-full w-48 h-48 flex items-center justify-center text-8xl opacity-0 scale-0 transition-all duration-200 pointer-events-none;
         }
         #player-choice-overlay.active { @apply opacity-100 scale-100; }
     </style>
@@ -91,6 +96,7 @@
         <div id="player-choice-overlay">✊</div>
 
         <p id="result-text">READY?</p>
+        
         <img id="npc-image" src="images/rps/rps_ready.webp" alt="NPC">
 
         <button onclick="play('s', '✌️')" class="rps-btn btn-scissors">
@@ -127,23 +133,21 @@
             pOverlay.classList.add('active');
             resultTxt.innerText = "你出了 " + (playerChoice === 'r' ? '石頭' : playerChoice === 's' ? '剪刀' : '布');
             
-            // NPC 進入預備狀態
+            // NPC 保持 Ready 狀態，不縮放，不位移
             npcImg.src = 'images/rps/rps_ready.webp';
-            npcImg.style.transform = "translate(-50%, -50%) scale(1.05)";
 
-            // 💡 關鍵：延長 2 秒停頓增加緊張感
+            // 停頓 2 秒
             await new Promise(r => setTimeout(r, 2000));
             
-            // 2. 揭曉階段
+            // 2. NPC 出拳 (無動畫，直接切換圖片)
             pOverlay.classList.remove('active');
             resultTxt.innerText = "猜...拳！";
 
             const options = ['r', 'p', 's'];
             const npcChoice = options[Math.floor(Math.random() * 3)];
             
-            // 顯示 NPC 的拳頭
+            // 💡 直接切換圖片，不做 style.transform
             npcImg.src = `images/rps/rps_${npcChoice}.webp`;
-            npcImg.style.transform = "translate(-50%, -50%) scale(1.15)";
 
             // 3. 判定勝負
             let status = ""; 
@@ -159,30 +163,28 @@
                 status = "lose";
             }
 
-            // 4. 延遲顯示 NPC 的勝負表情
-            await new Promise(r => setTimeout(r, 600));
-            const randIdx = Math.floor(Math.random() * 5) + 1;
+            // 4. 顯示勝負表情 (無動畫，直接切換圖片)
+            await new Promise(r => setTimeout(r, 600)); // 稍微停頓一下讓玩家看清楚 NPC 出什麼拳
+            const randIdx = Math.floor(Math.random() * 2) + 1;
 
             if (status === "draw") {
                 resultTxt.innerText = "DRAW!";
                 resultTxt.style.color = "#fbbf24"; 
-                npcImg.style.transform = "translate(-50%, -50%) scale(1.0)";
             } else if (status === "win") {
                 resultTxt.innerText = "YOU WIN!";
                 resultTxt.style.color = "#4ade80"; 
-                // 玩家贏了，NPC 顯示輸掉的表情
+                // NPC 輸了的表情
                 npcImg.src = `images/rps/rps_lose${randIdx}.webp`;
-                npcImg.style.transform = "translate(-50%, -50%) translateY(20px) scale(0.95)";
             } else {
                 resultTxt.innerText = "YOU LOSE!";
                 resultTxt.style.color = "#f87171"; 
-                // 玩家輸了，NPC 顯示贏了的表情
+                // NPC 贏了的表情
                 npcImg.src = `images/rps/rps_win${randIdx}.webp`;
-                npcImg.style.transform = "translate(-50%, -50%) translateY(-20px) scale(1.2)";
             }
 
+            // 5. 結束，回復原狀
             await new Promise(r => setTimeout(r, 2500));
-            npcImg.style.transform = "translate(-50%, -50%) scale(1.0)";
+            npcImg.src = 'images/rps/rps_ready.webp'; // 恢復到 Ready 圖片
             isPlaying = false;
         }
     </script>
