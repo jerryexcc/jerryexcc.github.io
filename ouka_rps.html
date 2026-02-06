@@ -3,10 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>猜拳大對抗 - 座標修正版</title>
+    <title>猜拳大對抗 - VH 比例版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@900&display=swap" rel="stylesheet">
     <style>
+        :root {
+            /* 💡 定義核心比例變數 */
+            --npc-h: 55vh;
+            --btn-size: 13vh;
+        }
+
         body { 
             font-family: 'Noto Sans TC', sans-serif; 
             background-image: url('images/bg/bg.webp'); 
@@ -17,7 +23,7 @@
             @apply flex items-center justify-center min-h-screen overflow-hidden;
         }
 
-        /* 💡 核心舞台：這是 NPC 與按鈕的共同基準 */
+        /* 💡 舞台容器 */
         .stage-center {
             position: relative;
             display: flex;
@@ -25,30 +31,30 @@
             justify-content: center;
             width: 100vw;
             height: 100vh;
-            /* 往下移動 100px */
-            margin-top: 100px;
+            /* 往下移動 10vh */
+            margin-top: 10vh;
         }
         
-        /* 💡 NPC 人物圖片 */
+        /* 💡 NPC 人物：高度佔螢幕 55% */
         #npc-image {
-            width: 800px;
-            height: 800px;
+            height: var(--npc-h);
+            width: auto;
             object-fit: contain;
             z-index: 10;
-            filter: drop-shadow(0 20px 30px rgba(0,0,0,0.5));
+            filter: drop-shadow(0 2vh 3vh rgba(0,0,0,0.5));
             transition: all 0.3s ease;
         }
 
-        /* 💡 按鈕通用樣式：強制絕對定位以貼合 NPC 底部 */
+        /* 💡 按鈕通用樣式 */
         .rps-btn {
-            position: absolute; /* 💡 關鍵：脫離文件流，才能精確貼合 */
+            position: absolute;
             z-index: 20;
-            width: 60px;
-            height: 60px;
+            width: var(--btn-size);
+            height: var(--btn-size);
             background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(5px);
-            border: 2.5px solid rgba(255, 255, 255, 0.4);
-            border-radius: 2rem;
+            backdrop-filter: blur(8px);
+            border: 0.4vh solid rgba(255, 255, 255, 0.4);
+            border-radius: 2.5vh;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -58,35 +64,35 @@
 
         .rps-btn:active { transform: scale(0.9) !important; }
 
-        /* 💡 座標精確分配：相對於人物底部的左右分佈 */
-        /* bottom 控制垂直高度，left 控制水平位置 */
+        /* 💡 使用 vh 鎖定與人物圖片的相對位置 */
         .btn-scissors { 
-            bottom: 50px; 
-            left: calc(50% - 220px); /* 往左移 220px */
+            bottom: 12vh; /* 從容器底部往上推 */
+            left: calc(50% - 22vh); 
         }
         
         .btn-rock { 
-            bottom: -10px; /* 💡 貼合 NPC 正中心最下方 */
+            bottom: 2vh; 
             left: 50%;
             transform: translateX(-50%);
         }
         
         .btn-paper { 
-            bottom: 50px; 
-            right: calc(50% - 220px); /* 往右移 220px */
+            bottom: 12vh; 
+            right: calc(50% - 22vh); 
         }
 
-        .rps-btn span { font-size: 2rem; }
-        .rps-btn p { color: white; font-weight: 900; font-size: 0.8rem; margin: 0; }
+        /* 💡 內容物大小也使用 vh，確保縮放比例 */
+        .rps-btn span { font-size: 7vh; line-height: 1; }
+        .rps-btn p { color: white; font-weight: 900; font-size: 1.8vh; margin-top: 0.5vh; }
 
         #result-text { 
             position: absolute;
-            top: -50px; /* 顯示在人物頭頂上方 */
-            font-size: 3rem;
+            top: 2vh; 
+            font-size: 10vh;
             font-weight: 900;
             font-style: italic;
             color: white;
-            text-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            text-shadow: 0 0.5vh 2vh rgba(0,0,0,0.6);
             z-index: 30;
             width: 100%;
             text-align: center;
@@ -126,6 +132,7 @@
             if (isPlaying) return;
             isPlaying = true;
 
+            // 1. 預備動作
             resultTxt.innerText = "猜...拳...";
             resultTxt.style.color = "white";
             npcImg.src = 'images/rps/rps_ready.webp';
@@ -133,11 +140,13 @@
 
             await new Promise(r => setTimeout(r, 700));
 
+            // 2. 隨機出拳
             const options = ['r', 'p', 's'];
             const npcChoice = options[Math.floor(Math.random() * 3)];
             npcImg.src = `images/rps/rps_${npcChoice}.webp`;
             npcImg.style.transform = "scale(1.0)";
 
+            // 3. 邏輯判斷
             let status = ""; 
             if (playerChoice === npcChoice) {
                 status = "draw";
@@ -151,6 +160,7 @@
                 status = "lose";
             }
 
+            // 4. 勝負圖片切換
             await new Promise(r => setTimeout(r, 400));
             const randIdx = Math.floor(Math.random() * 2) + 1;
 
