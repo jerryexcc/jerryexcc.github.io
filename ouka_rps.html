@@ -3,75 +3,72 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>猜拳大對抗</title>
+    <title>猜拳大對抗 - 正式對賽版</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@900&display=swap" rel="stylesheet">
     <style>
         body { 
             font-family: 'Noto Sans TC', sans-serif; 
-            /* 💡 背景圖設定 */
+            /* 💡 背景修正：從中間延伸並填滿 */
             background-image: url('images/bg/bg.webp'); 
             background-size: cover;
             background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
             @apply flex flex-col items-center justify-between min-h-screen overflow-hidden;
         }
         
         /* NPC 顯示區 */
         .npc-container {
-            @apply mt-20 flex flex-col items-center justify-center;
+            @apply mt-20 flex flex-col items-center justify-center flex-grow;
         }
         
         #npc-image {
-            @apply w-64 h-64 object-contain transition-all duration-300;
-            filter: drop-shadow(0 10px 15px rgba(0,0,0,0.3));
+            @apply w-72 h-72 object-contain transition-all duration-300;
+            filter: drop-shadow(0 15px 20px rgba(0,0,0,0.4));
         }
 
-        /* 下方控制區 */
+        /* 下方控制區：三等分 */
         .controls-container {
-            @apply w-full bg-black/40 backdrop-blur-md p-6 flex gap-4 justify-around border-t-2 border-white/20;
+            @apply w-full bg-black/60 backdrop-blur-lg p-6 flex gap-3 justify-around border-t-2 border-white/20;
+            padding-bottom: calc(env(safe-area-inset-bottom) + 1.5rem);
         }
 
         .rps-btn {
-            @apply flex-1 bg-white/10 hover:bg-white/30 border-2 border-white/50 rounded-2xl p-4 flex flex-col items-center gap-2 transition-all active:scale-90;
+            @apply flex-1 bg-white/10 hover:bg-white/20 border-2 border-white/30 rounded-3xl py-6 flex flex-col items-center gap-2 transition-all active:scale-90;
         }
 
-        .rps-btn span { @apply text-4xl; }
-        .rps-btn p { @apply text-white font-bold text-sm; }
+        .rps-btn span { @apply text-5xl; }
+        .rps-btn p { @apply text-white font-black text-lg; }
 
-        #result-text { @apply text-4xl font-black text-white italic drop-shadow-md mb-4; }
+        #result-text { @apply text-5xl font-black text-white italic drop-shadow-lg mb-6 transition-all; }
     </style>
 </head>
 <body>
 
     <div class="npc-container">
-        <p id="result-text">準備好了嗎？</p>
+        <p id="result-text">Ready?</p>
         <img id="npc-image" src="images/rps/rps_ready.webp" alt="NPC">
-        <div id="player-choice-view" class="mt-8 text-white font-bold hidden text-xl">
-            你出了：<span id="p-choice-name"></span>
-        </div>
     </div>
 
     <div class="controls-container">
         <button onclick="play('s')" class="rps-btn">
             <span>✌️</span>
-            <p>剪刀 (S)</p>
+            <p>剪刀</p>
         </button>
         <button onclick="play('r')" class="rps-btn">
             <span>✊</span>
-            <p>石頭 (R)</p>
+            <p>石頭</p>
         </button>
         <button onclick="play('p')" class="rps-btn">
             <span>🖐️</span>
-            <p>布 (P)</p>
+            <p>布</p>
         </button>
     </div>
 
     <script>
         const npcImg = document.getElementById('npc-image');
         const resultTxt = document.getElementById('result-text');
-        const choiceView = document.getElementById('player-choice-view');
-        const choiceName = document.getElementById('p-choice-name');
 
         let isPlaying = false;
 
@@ -79,60 +76,58 @@
             if (isPlaying) return;
             isPlaying = true;
 
-            // 1. 顯示玩家選擇與預備動畫
-            choiceView.classList.remove('hidden');
-            const names = { 'r': '石頭', 'p': '布', 's': '剪刀' };
-            choiceName.innerText = names[playerChoice];
-            
+            // 1. 準備階段
             resultTxt.innerText = "猜...拳...";
+            resultTxt.style.color = "white";
             npcImg.src = 'images/rps/rps_ready.webp';
-            npcImg.classList.add('scale-110');
+            npcImg.style.transform = "scale(1.15)";
 
-            // 💡 模擬思考延遲
-            await new Promise(r => setTimeout(r, 800));
+            // 💡 模擬心理博弈延遲
+            await new Promise(r => setTimeout(r, 700));
 
-            // 2. NPC 隨機出拳
+            // 2. 💡 AI 真隨機出拳 (不跟隨玩家)
             const options = ['r', 'p', 's'];
             const npcChoice = options[Math.floor(Math.random() * 3)];
+            
+            // 顯示 NPC 拳頭圖片
             npcImg.src = `images/rps/rps_${npcChoice}.webp`;
-            npcImg.classList.remove('scale-110');
+            npcImg.style.transform = "scale(1.0)";
 
-            // 3. 判斷輸贏
-            // Result: 0 縮, 1 玩家贏, 2 NPC贏
-            let status = 0; 
+            // 3. 判斷勝負邏輯
+            let status = ""; // "win", "lose", "draw"
             if (playerChoice === npcChoice) {
-                status = 0;
+                status = "draw";
             } else if (
                 (playerChoice === 'r' && npcChoice === 's') ||
                 (playerChoice === 's' && npcChoice === 'p') ||
                 (playerChoice === 'p' && npcChoice === 'r')
             ) {
-                status = 1; // 玩家贏 (NPC 輸了)
+                status = "win"; // 玩家贏了
             } else {
-                status = 2; // NPC 贏了
+                status = "lose"; // 玩家輸了
             }
 
-            // 4. 顯示 NPC 的反應圖片 (隨機 win/lose)
-            await new Promise(r => setTimeout(r, 500));
+            // 4. 根據結果切換隨機圖片
+            await new Promise(r => setTimeout(r, 400));
             const randIdx = Math.floor(Math.random() * 2) + 1; // 1 or 2
 
-            if (status === 0) {
-                resultTxt.innerText = "平手！";
-                resultTxt.className = "text-amber-400 italic text-4xl font-black";
-            } else if (status === 1) {
-                // 玩家贏了，NPC 要顯示 lose 圖片
-                resultTxt.innerText = "你贏了！";
-                resultTxt.className = "text-green-400 italic text-4xl font-black";
+            if (status === "draw") {
+                resultTxt.innerText = "DRAW!";
+                resultTxt.style.color = "#fbbf24"; // 琥珀色
+            } else if (status === "win") {
+                resultTxt.innerText = "YOU WIN!";
+                resultTxt.style.color = "#4ade80"; // 綠色
+                // 玩家贏了，NPC 要顯示輸的圖片 (lose)
                 npcImg.src = `images/rps/rps_lose${randIdx}.webp`;
             } else {
-                // NPC 贏了，NPC 要顯示 win 圖片
-                resultTxt.innerText = "你輸了...";
-                resultTxt.className = "text-red-500 italic text-4xl font-black";
+                resultTxt.innerText = "YOU LOSE!";
+                resultTxt.style.color = "#f87171"; // 紅色
+                // 玩家輸了，NPC 要顯示贏的圖片 (win)
                 npcImg.src = `images/rps/rps_win${randIdx}.webp`;
             }
 
-            // 5. 結束冷卻
-            await new Promise(r => setTimeout(r, 2000));
+            // 5. 冷卻重置
+            await new Promise(r => setTimeout(r, 1800));
             isPlaying = false;
         }
     </script>
