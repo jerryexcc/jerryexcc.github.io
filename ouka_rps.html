@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>猜拳大對抗 - UI 精確版</title>
+    <title>猜拳大對抗 - 座標鎖定版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@900&display=swap" rel="stylesheet">
     <style>
@@ -13,70 +13,76 @@
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
-            @apply flex flex-col items-center justify-between min-h-screen overflow-hidden;
+            @apply flex items-center justify-center min-h-screen overflow-hidden;
+        }
+
+        /* 💡 角色總容器：所有座標的基準點 */
+        .character-stage {
+            @apply relative flex items-center justify-center;
+            width: 100vw;
+            height: 100dvh;
+            /* 往下移動 100px */
+            transform: translateY(100px); 
         }
         
-        /* 💡 人物區域：從中間垂直中心往下推 100px */
-        .npc-container {
-            @apply relative flex flex-col items-center justify-center flex-grow;
-            top: 100px; 
-        }
-        
+        /* 💡 人物：現在放大 2 倍 */
         #npc-image {
-            @apply w-72 h-72 object-contain transition-all duration-300;
-            filter: drop-shadow(0 20px 25px rgba(0,0,0,0.5));
+            @apply w-[550px] h-[550px] object-contain transition-all duration-300 z-10;
+            filter: drop-shadow(0 30px 40px rgba(0,0,0,0.6));
         }
 
-        /* 💡 下方按鈕區：三等分布局並放大 3 倍 */
-        .controls-container {
-            @apply w-full flex justify-between items-end px-4 pb-12;
-            min-height: 200px;
-        }
-
+        /* 💡 猜拳圖示通用樣式：貼合人物底部 */
         .rps-btn {
-            /* 💡 放大尺寸至約 3 倍 (原本約 60px -> 現在約 180px) */
-            @apply bg-black/50 backdrop-blur-md border-4 border-white/40 rounded-3xl transition-all active:scale-95;
-            width: 110px; 
-            height: 110px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            @apply absolute z-20 transition-all active:scale-90 flex flex-col items-center;
+            /* 這裡控制圖示大小 */
+            width: 120px;
+            height: 120px;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(8px);
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 2rem;
             justify-content: center;
         }
 
-        .rps-btn span { @apply text-5xl; } /* 放大 Emoji */
-        .rps-btn p { @apply text-white font-black text-xs mt-1; }
+        /* 💡 精確位置分配 */
+        .btn-scissors { bottom: 50px; left: calc(50% - 280px); } /* 左下 */
+        .btn-rock     { bottom: -20px; left: 50%; transform: translateX(-50%); } /* 正中下 */
+        .btn-paper    { bottom: 50px; right: calc(50% - 280px); } /* 右下 */
+
+        .rps-btn span { @apply text-6xl; }
+        .rps-btn p { @apply text-white font-black text-sm mt-1; }
 
         #result-text { 
-            @apply absolute text-6xl font-black italic drop-shadow-2xl z-10;
-            top: -120px; /* 顯示在人物上方 */
+            @apply absolute text-7xl font-black italic drop-shadow-2xl z-30;
+            top: 50px;
             text-align: center;
-            width: 300px;
+            width: 100%;
         }
     </style>
 </head>
 <body>
 
-    <div class="npc-container">
-        <p id="result-text" class="text-white transition-all">Ready?</p>
+    <div class="character-stage">
+        
+        <p id="result-text" class="text-white">Ready?</p>
+        
         <img id="npc-image" src="images/rps/rps_ready.webp" alt="NPC">
-    </div>
 
-    <div class="controls-container">
-        <button onclick="play('s')" class="rps-btn">
+        <button onclick="play('s')" class="rps-btn btn-scissors">
             <span>✌️</span>
             <p>剪刀</p>
         </button>
         
-        <button onclick="play('r')" class="rps-btn">
+        <button onclick="play('r')" class="rps-btn btn-rock">
             <span>✊</span>
             <p>石頭</p>
         </button>
         
-        <button onclick="play('p')" class="rps-btn">
+        <button onclick="play('p')" class="rps-btn btn-paper">
             <span>🖐️</span>
             <p>布</p>
         </button>
+
     </div>
 
     <script>
@@ -89,21 +95,19 @@
             if (isPlaying) return;
             isPlaying = true;
 
-            // 1. 準備階段
             resultTxt.innerText = "猜...拳...";
             resultTxt.style.color = "white";
             npcImg.src = 'images/rps/rps_ready.webp';
-            npcImg.style.transform = "scale(1.2) translateY(-20px)"; // 預備時稍微浮起
+            // 出拳時微微震動縮放
+            npcImg.style.transform = "scale(1.1)"; 
 
             await new Promise(r => setTimeout(r, 700));
 
-            // 2. AI 隨機出拳
             const options = ['r', 'p', 's'];
             const npcChoice = options[Math.floor(Math.random() * 3)];
             npcImg.src = `images/rps/rps_${npcChoice}.webp`;
-            npcImg.style.transform = "scale(1.0) translateY(0)";
+            npcImg.style.transform = "scale(1.0)";
 
-            // 3. 判斷勝負
             let status = ""; 
             if (playerChoice === npcChoice) {
                 status = "draw";
@@ -117,7 +121,6 @@
                 status = "lose";
             }
 
-            // 4. NPC 勝負反應
             await new Promise(r => setTimeout(r, 400));
             const randIdx = Math.floor(Math.random() * 2) + 1;
 
