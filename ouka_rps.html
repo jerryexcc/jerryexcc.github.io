@@ -1,35 +1,27 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>猜拳大對抗 - 平均分佈版</title>
+    <title>猜拳大對抗 - 水平對齊版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@900&display=swap" rel="stylesheet">
     <style>
         :root {
             --npc-h: 55vh;
             --btn-size: 13vh;
+            --btn-bottom: 6vh; /* 💡 統一所有按鈕的底部高度 */
         }
 
-        html,
-        body {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            overscroll-behavior: none;
-            touch-action: none;
+        html, body {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow: hidden; overscroll-behavior: none; touch-action: none;
         }
 
-        body {
-            font-family: 'Noto Sans TC', sans-serif;
-            background-image: url('images/bg/bg.webp');
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
+        body { 
+            font-family: 'Noto Sans TC', sans-serif; 
+            background-image: url('images/bg/bg.webp'); 
+            background-size: cover; background-position: center; background-attachment: fixed;
             @apply flex items-center justify-center min-h-screen;
         }
 
@@ -37,26 +29,24 @@
             position: relative;
             width: 100vw;
             height: 100dvh;
-            margin-top: 10vh;
-            /* 整體下移 */
+            /* 💡 稍微調整整體偏移，讓人物往上提一點，騰出空間給按鈕 */
+            margin-top: 5vh; 
         }
-
+        
         #npc-image {
             position: absolute;
             left: 50%;
-            top: 40%;
-            /* 讓人物位於舞台上半部 */
+            top: 45%; 
             transform: translate(-50%, -50%);
             height: var(--npc-h);
             width: auto;
             object-fit: contain;
             z-index: 10;
-            filter: drop-shadow(0 2vh 3vh rgba(0, 0, 0, 0.5));
+            filter: drop-shadow(0 2vh 3vh rgba(0,0,0,0.5));
             transition: transform 0.3s ease;
             pointer-events: none;
         }
 
-        /* 💡 按鈕通用樣式 */
         .rps-btn {
             position: absolute;
             z-index: 20;
@@ -66,68 +56,44 @@
             backdrop-filter: blur(8px);
             border: 0.4vh solid rgba(255, 255, 255, 0.4);
             border-radius: 2.5vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
             transition: transform 0.1s;
             touch-action: manipulation;
         }
 
-        .rps-btn:active {
-            transform: translate(-50%, 0) scale(0.9) !important;
-        }
+        .rps-btn:active { transform: translate(-50%, 0) scale(0.9) !important; }
 
-        /* 💡 修正：使用百分比達成絕對平均分佈 */
-        /* bottom 控制垂直高度，left 控制水平百分比，再用 translateX(-50%) 達成真正置中 */
-        .btn-scissors {
-            bottom: 12vh;
-            left: 10%;
+        /* 💡 修正：將 bottom 全部統一為 var(--btn-bottom) */
+        .btn-scissors { 
+            bottom: var(--btn-bottom); 
+            left: 20%; 
             transform: translateX(-50%);
         }
-
-        .btn-rock {
-            bottom: 12vh;
+        
+        .btn-rock { 
+            bottom: var(--btn-bottom); 
             left: 50%;
             transform: translateX(-50%);
         }
-
-        .btn-paper {
-            bottom: 12vh;
-            left: 90%;
+        
+        .btn-paper { 
+            bottom: var(--btn-bottom); 
+            left: 80%; 
             transform: translateX(-50%);
         }
 
-        .rps-btn span {
-            font-size: 7vh;
-            line-height: 1;
-            pointer-events: none;
-        }
+        .rps-btn span { font-size: 7vh; line-height: 1; pointer-events: none; }
+        .rps-btn p { color: white; font-weight: 900; font-size: 1.8vh; margin-top: 0.5vh; pointer-events: none; }
 
-        .rps-btn p {
-            color: white;
-            font-weight: 900;
-            font-size: 1.8vh;
-            margin-top: 0.5vh;
-            pointer-events: none;
-        }
-
-        #result-text {
+        #result-text { 
             position: absolute;
-            top: 5vh;
-            font-size: 10vh;
-            font-weight: 900;
-            font-style: italic;
-            color: white;
-            text-shadow: 0 0.5vh 2vh rgba(0, 0, 0, 0.6);
-            z-index: 30;
-            width: 100%;
-            text-align: center;
-            pointer-events: none;
+            top: 5vh; 
+            font-size: 10vh; font-weight: 900; font-style: italic;
+            color: white; text-shadow: 0 0.5vh 2vh rgba(0,0,0,0.6);
+            z-index: 30; width: 100%; text-align: center; pointer-events: none;
         }
     </style>
 </head>
-
 <body>
 
     <div class="stage-center">
@@ -138,12 +104,12 @@
             <span>✌️</span>
             <p>剪刀</p>
         </button>
-
+        
         <button onclick="play('r')" class="rps-btn btn-rock">
             <span>✊</span>
             <p>石頭</p>
         </button>
-
+        
         <button onclick="play('p')" class="rps-btn btn-paper">
             <span>🖐️</span>
             <p>布</p>
@@ -151,11 +117,10 @@
     </div>
 
     <script>
+        // ... (保持原本的 JS 邏輯不變)
         const npcImg = document.getElementById('npc-image');
         const resultTxt = document.getElementById('result-text');
-
         document.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
-
         let isPlaying = false;
 
         async function play(playerChoice) {
@@ -174,7 +139,7 @@
             npcImg.src = `images/rps/rps_${npcChoice}.webp`;
             npcImg.style.transform = "translate(-50%, -50%) scale(1.0)";
 
-            let status = "";
+            let status = ""; 
             if (playerChoice === npcChoice) {
                 status = "draw";
             } else if (
@@ -192,14 +157,14 @@
 
             if (status === "draw") {
                 resultTxt.innerText = "DRAW!";
-                resultTxt.style.color = "#fbbf24";
+                resultTxt.style.color = "#fbbf24"; 
             } else if (status === "win") {
                 resultTxt.innerText = "WIN!";
-                resultTxt.style.color = "#4ade80";
+                resultTxt.style.color = "#4ade80"; 
                 npcImg.src = `images/rps/rps_lose${randIdx}.webp`;
             } else {
                 resultTxt.innerText = "LOSE!";
-                resultTxt.style.color = "#f87171";
+                resultTxt.style.color = "#f87171"; 
                 npcImg.src = `images/rps/rps_win${randIdx}.webp`;
             }
 
@@ -208,5 +173,4 @@
         }
     </script>
 </body>
-
 </html>
