@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>猜拳大對抗 - 終極穩定版</title>
+    <title>猜拳大對抗 - 平均分佈版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@900&display=swap" rel="stylesheet">
     <style>
@@ -12,48 +13,50 @@
             --btn-size: 13vh;
         }
 
-        /* 💡 徹底防止畫面滾動與橡皮筋效果 */
-        html, body {
+        html,
+        body {
             margin: 0;
             padding: 0;
             width: 100%;
             height: 100%;
-            overflow: hidden; /* 禁止溢出 */
-            overscroll-behavior: none; /* 防止下拉重新整理 */
-            touch-action: none; /* 禁止瀏覽器預設手勢 (縮放、捲動) */
+            overflow: hidden;
+            overscroll-behavior: none;
+            touch-action: none;
         }
 
-        body { 
-            font-family: 'Noto Sans TC', sans-serif; 
-            background-image: url('images/bg/bg.webp'); 
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-image: url('images/bg/bg.webp');
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
             @apply flex items-center justify-center min-h-screen;
         }
 
-        /* 💡 舞台容器：鎖定在視窗中心 */
         .stage-center {
             position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
             width: 100vw;
-            height: 100dvh; /* 使用動態視窗高度 */
-            margin-top: 10vh; /* 人物下移 10vh */
+            height: 100dvh;
+            margin-top: 10vh;
+            /* 整體下移 */
         }
-        
+
         #npc-image {
+            position: absolute;
+            left: 50%;
+            top: 40%;
+            /* 讓人物位於舞台上半部 */
+            transform: translate(-50%, -50%);
             height: var(--npc-h);
             width: auto;
             object-fit: contain;
             z-index: 10;
-            filter: drop-shadow(0 2vh 3vh rgba(0,0,0,0.5));
+            filter: drop-shadow(0 2vh 3vh rgba(0, 0, 0, 0.5));
             transition: transform 0.3s ease;
-            pointer-events: none; /* 防止長按圖片彈出選單 */
+            pointer-events: none;
         }
 
-        /* 💡 按鈕樣式：允許點擊事件 */
+        /* 💡 按鈕通用樣式 */
         .rps-btn {
             position: absolute;
             z-index: 20;
@@ -68,27 +71,55 @@
             align-items: center;
             justify-content: center;
             transition: transform 0.1s;
-            touch-action: manipulation; /* 允許點擊，但禁止雙擊縮放 */
+            touch-action: manipulation;
         }
 
-        .rps-btn:active { transform: scale(0.9) !important; }
+        .rps-btn:active {
+            transform: translate(-50%, 0) scale(0.9) !important;
+        }
 
-        /* 💡 精確座標鎖定 */
-        .btn-scissors { bottom: 12vh; left: calc(50% - 22vh); }
-        .btn-rock     { bottom: 2vh; left: 50%; transform: translateX(-50%); }
-        .btn-paper    { bottom: 12vh; right: calc(50% - 22vh); }
+        /* 💡 修正：使用百分比達成絕對平均分佈 */
+        /* bottom 控制垂直高度，left 控制水平百分比，再用 translateX(-50%) 達成真正置中 */
+        .btn-scissors {
+            bottom: 12vh;
+            left: 20%;
+            transform: translateX(-50%);
+        }
 
-        .rps-btn span { font-size: 7vh; line-height: 1; pointer-events: none; }
-        .rps-btn p { color: white; font-weight: 900; font-size: 1.8vh; margin-top: 0.5vh; pointer-events: none; }
+        .btn-rock {
+            bottom: 2vh;
+            left: 50%;
+            transform: translateX(-50%);
+        }
 
-        #result-text { 
+        .btn-paper {
+            bottom: 12vh;
+            left: 80%;
+            transform: translateX(-50%);
+        }
+
+        .rps-btn span {
+            font-size: 7vh;
+            line-height: 1;
+            pointer-events: none;
+        }
+
+        .rps-btn p {
+            color: white;
+            font-weight: 900;
+            font-size: 1.8vh;
+            margin-top: 0.5vh;
+            pointer-events: none;
+        }
+
+        #result-text {
             position: absolute;
-            top: 2vh; 
+            top: 5vh;
             font-size: 10vh;
             font-weight: 900;
             font-style: italic;
             color: white;
-            text-shadow: 0 0.5vh 2vh rgba(0,0,0,0.6);
+            text-shadow: 0 0.5vh 2vh rgba(0, 0, 0, 0.6);
             z-index: 30;
             width: 100%;
             text-align: center;
@@ -96,23 +127,23 @@
         }
     </style>
 </head>
+
 <body>
 
     <div class="stage-center">
         <p id="result-text">READY?</p>
-        
         <img id="npc-image" src="images/rps/rps_ready.webp" alt="NPC">
 
         <button onclick="play('s')" class="rps-btn btn-scissors">
             <span>✌️</span>
             <p>剪刀</p>
         </button>
-        
+
         <button onclick="play('r')" class="rps-btn btn-rock">
             <span>✊</span>
             <p>石頭</p>
         </button>
-        
+
         <button onclick="play('p')" class="rps-btn btn-paper">
             <span>🖐️</span>
             <p>布</p>
@@ -123,7 +154,6 @@
         const npcImg = document.getElementById('npc-image');
         const resultTxt = document.getElementById('result-text');
 
-        // 💡 防止 iOS Safari 的彈性滾動
         document.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
 
         let isPlaying = false;
@@ -132,22 +162,19 @@
             if (isPlaying) return;
             isPlaying = true;
 
-            // 1. 準備階段
             resultTxt.innerText = "猜...拳...";
             resultTxt.style.color = "white";
             npcImg.src = 'images/rps/rps_ready.webp';
-            npcImg.style.transform = "scale(1.1)";
+            npcImg.style.transform = "translate(-50%, -50%) scale(1.1)";
 
             await new Promise(r => setTimeout(r, 700));
 
-            // 2. AI 隨機出拳
             const options = ['r', 'p', 's'];
             const npcChoice = options[Math.floor(Math.random() * 3)];
             npcImg.src = `images/rps/rps_${npcChoice}.webp`;
-            npcImg.style.transform = "scale(1.0)";
+            npcImg.style.transform = "translate(-50%, -50%) scale(1.0)";
 
-            // 3. 勝負判定
-            let status = ""; 
+            let status = "";
             if (playerChoice === npcChoice) {
                 status = "draw";
             } else if (
@@ -160,27 +187,26 @@
                 status = "lose";
             }
 
-            // 4. 顯示隨機結果圖片
             await new Promise(r => setTimeout(r, 400));
             const randIdx = Math.floor(Math.random() * 2) + 1;
 
             if (status === "draw") {
                 resultTxt.innerText = "DRAW!";
-                resultTxt.style.color = "#fbbf24"; 
+                resultTxt.style.color = "#fbbf24";
             } else if (status === "win") {
                 resultTxt.innerText = "WIN!";
-                resultTxt.style.color = "#4ade80"; 
+                resultTxt.style.color = "#4ade80";
                 npcImg.src = `images/rps/rps_lose${randIdx}.webp`;
             } else {
                 resultTxt.innerText = "LOSE!";
-                resultTxt.style.color = "#f87171"; 
+                resultTxt.style.color = "#f87171";
                 npcImg.src = `images/rps/rps_win${randIdx}.webp`;
             }
 
-            // 5. 冷卻重置
             await new Promise(r => setTimeout(r, 2000));
             isPlaying = false;
         }
     </script>
 </body>
+
 </html>
