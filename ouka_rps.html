@@ -2,15 +2,25 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>猜拳大對抗 - VH 比例版</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>猜拳大對抗 - 終極穩定版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@900&display=swap" rel="stylesheet">
     <style>
         :root {
-            /* 💡 定義核心比例變數 */
             --npc-h: 55vh;
             --btn-size: 13vh;
+        }
+
+        /* 💡 徹底防止畫面滾動與橡皮筋效果 */
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden; /* 禁止溢出 */
+            overscroll-behavior: none; /* 防止下拉重新整理 */
+            touch-action: none; /* 禁止瀏覽器預設手勢 (縮放、捲動) */
         }
 
         body { 
@@ -19,39 +29,37 @@
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
-            margin: 0;
-            @apply flex items-center justify-center min-h-screen overflow-hidden;
+            @apply flex items-center justify-center min-h-screen;
         }
 
-        /* 💡 舞台容器 */
+        /* 💡 舞台容器：鎖定在視窗中心 */
         .stage-center {
             position: relative;
             display: flex;
             align-items: center;
             justify-content: center;
             width: 100vw;
-            height: 100vh;
-            /* 往下移動 10vh */
-            margin-top: 10vh;
+            height: 100dvh; /* 使用動態視窗高度 */
+            margin-top: 10vh; /* 人物下移 10vh */
         }
         
-        /* 💡 NPC 人物：高度佔螢幕 55% */
         #npc-image {
             height: var(--npc-h);
             width: auto;
             object-fit: contain;
             z-index: 10;
             filter: drop-shadow(0 2vh 3vh rgba(0,0,0,0.5));
-            transition: all 0.3s ease;
+            transition: transform 0.3s ease;
+            pointer-events: none; /* 防止長按圖片彈出選單 */
         }
 
-        /* 💡 按鈕通用樣式 */
+        /* 💡 按鈕樣式：允許點擊事件 */
         .rps-btn {
             position: absolute;
             z-index: 20;
             width: var(--btn-size);
             height: var(--btn-size);
-            background: rgba(0, 0, 0, 0.6);
+            background: rgba(0, 0, 0, 0.65);
             backdrop-filter: blur(8px);
             border: 0.4vh solid rgba(255, 255, 255, 0.4);
             border-radius: 2.5vh;
@@ -60,30 +68,18 @@
             align-items: center;
             justify-content: center;
             transition: transform 0.1s;
+            touch-action: manipulation; /* 允許點擊，但禁止雙擊縮放 */
         }
 
         .rps-btn:active { transform: scale(0.9) !important; }
 
-        /* 💡 使用 vh 鎖定與人物圖片的相對位置 */
-        .btn-scissors { 
-            bottom: 12vh; /* 從容器底部往上推 */
-            left: calc(50% - 22vh); 
-        }
-        
-        .btn-rock { 
-            bottom: 2vh; 
-            left: 50%;
-            transform: translateX(-50%);
-        }
-        
-        .btn-paper { 
-            bottom: 12vh; 
-            right: calc(50% - 22vh); 
-        }
+        /* 💡 精確座標鎖定 */
+        .btn-scissors { bottom: 12vh; left: calc(50% - 22vh); }
+        .btn-rock     { bottom: 2vh; left: 50%; transform: translateX(-50%); }
+        .btn-paper    { bottom: 12vh; right: calc(50% - 22vh); }
 
-        /* 💡 內容物大小也使用 vh，確保縮放比例 */
-        .rps-btn span { font-size: 7vh; line-height: 1; }
-        .rps-btn p { color: white; font-weight: 900; font-size: 1.8vh; margin-top: 0.5vh; }
+        .rps-btn span { font-size: 7vh; line-height: 1; pointer-events: none; }
+        .rps-btn p { color: white; font-weight: 900; font-size: 1.8vh; margin-top: 0.5vh; pointer-events: none; }
 
         #result-text { 
             position: absolute;
@@ -96,6 +92,7 @@
             z-index: 30;
             width: 100%;
             text-align: center;
+            pointer-events: none;
         }
     </style>
 </head>
@@ -126,13 +123,16 @@
         const npcImg = document.getElementById('npc-image');
         const resultTxt = document.getElementById('result-text');
 
+        // 💡 防止 iOS Safari 的彈性滾動
+        document.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+
         let isPlaying = false;
 
         async function play(playerChoice) {
             if (isPlaying) return;
             isPlaying = true;
 
-            // 1. 預備動作
+            // 1. 準備階段
             resultTxt.innerText = "猜...拳...";
             resultTxt.style.color = "white";
             npcImg.src = 'images/rps/rps_ready.webp';
@@ -140,13 +140,13 @@
 
             await new Promise(r => setTimeout(r, 700));
 
-            // 2. 隨機出拳
+            // 2. AI 隨機出拳
             const options = ['r', 'p', 's'];
             const npcChoice = options[Math.floor(Math.random() * 3)];
             npcImg.src = `images/rps/rps_${npcChoice}.webp`;
             npcImg.style.transform = "scale(1.0)";
 
-            // 3. 邏輯判斷
+            // 3. 勝負判定
             let status = ""; 
             if (playerChoice === npcChoice) {
                 status = "draw";
@@ -160,7 +160,7 @@
                 status = "lose";
             }
 
-            // 4. 勝負圖片切換
+            // 4. 顯示隨機結果圖片
             await new Promise(r => setTimeout(r, 400));
             const randIdx = Math.floor(Math.random() * 2) + 1;
 
@@ -177,6 +177,7 @@
                 npcImg.src = `images/rps/rps_win${randIdx}.webp`;
             }
 
+            // 5. 冷卻重置
             await new Promise(r => setTimeout(r, 2000));
             isPlaying = false;
         }
