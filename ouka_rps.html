@@ -1,28 +1,36 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>猜拳大對抗 - 純淨版</title>
+    <title>猜拳大對抗 - 按鈕互動版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@900&display=swap" rel="stylesheet">
     <style>
         :root {
-            /* NPC 巨大化設定 */
-            --npc-h: 80vh; 
+            --npc-h: 80vh;
             --btn-size: 13vh;
             --btn-bottom: 5vh;
         }
 
-        html, body {
-            margin: 0; padding: 0; width: 100%; height: 100%;
-            overflow: hidden; overscroll-behavior: none; touch-action: none;
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            overscroll-behavior: none;
+            touch-action: none;
         }
 
-        body { 
-            font-family: 'Noto Sans TC', sans-serif; 
-            background-image: url('images/bg/bg.webp'); 
-            background-size: cover; background-position: center; background-attachment: fixed;
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-image: url('images/bg/bg.webp');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
             @apply flex items-end justify-center min-h-screen;
         }
 
@@ -31,24 +39,20 @@
             width: 100vw;
             height: 100dvh;
         }
-        
-        /* 💡 NPC 樣式：完全靜態，無 transition */
+
         #npc-image {
             position: absolute;
             left: 50%;
             bottom: 0;
-            /* 只做水平置中，不做任何縮放 */
-            transform: translateX(-50%); 
+            transform: translateX(-50%);
             height: var(--npc-h);
             width: auto;
             object-fit: contain;
             z-index: 5;
-            filter: drop-shadow(0 -2vh 4vh rgba(0,0,0,0.5));
+            filter: drop-shadow(0 -2vh 4vh rgba(0, 0, 0, 0.5));
             pointer-events: none;
-            /* 💡 關鍵：移除 transition，確保切換圖片時沒有任何動畫過渡 */
         }
 
-        /* 按鈕樣式 */
         .rps-btn {
             position: absolute;
             z-index: 20;
@@ -58,49 +62,87 @@
             backdrop-filter: blur(5px);
             border: 0.4vh solid rgba(255, 255, 255, 0.6);
             border-radius: 2.5vh;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            /* 僅保留按鈕本身的點擊回饋，不影響 NPC */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
             transition: transform 0.1s;
             touch-action: manipulation;
+            /* 💡 增加 visibility 的過渡效果，讓消失不那麼突兀，或者直接硬切也可以 */
+            transition: transform 0.1s, visibility 0s;
         }
 
-        .rps-btn:active { transform: translateX(-50%) scale(0.95) !important; }
+        .rps-btn:active {
+            transform: translateX(-50%) scale(0.95) !important;
+        }
 
-        .btn-scissors { bottom: var(--btn-bottom); left: 20%; transform: translateX(-50%); }
-        .btn-rock     { bottom: var(--btn-bottom); left: 50%; transform: translateX(-50%); }
-        .btn-paper    { bottom: var(--btn-bottom); left: 80%; transform: translateX(-50%); }
+        .btn-scissors {
+            bottom: var(--btn-bottom);
+            left: 20%;
+            transform: translateX(-50%);
+        }
 
-        .rps-btn span { font-size: 7vh; line-height: 1; pointer-events: none; }
-        .rps-btn p { color: white; font-weight: 900; font-size: 1.8vh; margin-top: 0.5vh; pointer-events: none; }
+        .btn-rock {
+            bottom: var(--btn-bottom);
+            left: 50%;
+            transform: translateX(-50%);
+        }
 
-        #result-text { 
+        .btn-paper {
+            bottom: var(--btn-bottom);
+            left: 80%;
+            transform: translateX(-50%);
+        }
+
+        .rps-btn span {
+            font-size: 7vh;
+            line-height: 1;
+            pointer-events: none;
+        }
+
+        .rps-btn p {
+            color: white;
+            font-weight: 900;
+            font-size: 1.8vh;
+            margin-top: 0.5vh;
+            pointer-events: none;
+        }
+
+        #result-text {
             position: absolute;
-            top: 8vh; 
-            font-size: 8vh; font-weight: 900; font-style: italic;
-            color: white; text-shadow: 0 0.5vh 3vh rgba(0,0,0,0.8);
-            z-index: 30; width: 100%; text-align: center; pointer-events: none;
+            top: 8vh;
+            font-size: 8vh;
+            font-weight: 900;
+            font-style: italic;
+            color: white;
+            text-shadow: 0 0.5vh 3vh rgba(0, 0, 0, 0.8);
+            z-index: 30;
+            width: 100%;
+            text-align: center;
+            pointer-events: none;
             line-height: 1.2;
         }
     </style>
 </head>
+
 <body>
 
     <div class="stage-center">
         <p id="result-text">READY?</p>
-        
+
         <img id="npc-image" src="images/rps/rps_ready.webp" alt="NPC">
 
-        <button onclick="play('s')" class="rps-btn btn-scissors">
+        <button onclick="play('s', this)" class="rps-btn btn-scissors">
             <span>✌️</span>
             <p>剪刀</p>
         </button>
-        
-        <button onclick="play('r')" class="rps-btn btn-rock">
+
+        <button onclick="play('r', this)" class="rps-btn btn-rock">
             <span>✊</span>
             <p>石頭</p>
         </button>
-        
-        <button onclick="play('p')" class="rps-btn btn-paper">
+
+        <button onclick="play('p', this)" class="rps-btn btn-paper">
             <span>🖐️</span>
             <p>布</p>
         </button>
@@ -109,36 +151,44 @@
     <script>
         const npcImg = document.getElementById('npc-image');
         const resultTxt = document.getElementById('result-text');
+        // 取得所有按鈕，方便後續操作
+        const allButtons = document.querySelectorAll('.rps-btn');
 
         document.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
 
         let isPlaying = false;
 
-        async function play(playerChoice) {
+        // 💡 修改點：接收 clickedBtn 參數
+        async function play(playerChoice, clickedBtn) {
             if (isPlaying) return;
             isPlaying = true;
 
-            // 1. 玩家出拳階段
-            // 只更新文字，不顯示任何額外 UI
+            // 1. 隱藏未選擇的按鈕 
+            allButtons.forEach(btn => {
+                if (btn !== clickedBtn) {
+                    btn.style.visibility = 'hidden'; // 使用 hidden 佔位但不顯示
+                }
+            });
+
+            // 玩家出拳階段
             resultTxt.innerText = "你出了 " + (playerChoice === 'r' ? '石頭' : playerChoice === 's' ? '剪刀' : '布');
             resultTxt.style.color = "white";
-            
-            // NPC 保持 Ready，無動畫
+
             npcImg.src = 'images/rps/rps_ready.webp';
 
-            // 停頓 2 秒，營造緊張感
+            // 停頓 2 秒
             await new Promise(r => setTimeout(r, 2000));
-            
-            // 2. NPC 出拳 (瞬間切換，無縮放)
+
+            // 2. NPC 出拳
             resultTxt.innerText = "猜...拳！";
 
             const options = ['r', 'p', 's'];
             const npcChoice = options[Math.floor(Math.random() * 3)];
-            
+
             npcImg.src = `images/rps/rps_${npcChoice}.webp`;
 
             // 3. 判定勝負
-            let status = ""; 
+            let status = "";
             if (playerChoice === npcChoice) {
                 status = "draw";
             } else if (
@@ -151,32 +201,38 @@
                 status = "lose";
             }
 
-            // 4. 顯示結果 (稍微停頓讓玩家看清楚出拳)
-            await new Promise(r => setTimeout(r, 600)); 
-            const randIdx = Math.floor(Math.random() * 2) + 1;
+            // 4. 顯示結果
+            await new Promise(r => setTimeout(r, 1000));
+            // 根據您的代碼，這裡是隨機 1~5，如果您只有 win1/win2，請自行改回 * 2
+            const randIdx = Math.floor(Math.random() * 5) + 1;
 
             if (status === "draw") {
                 resultTxt.innerText = "DRAW!";
-                resultTxt.style.color = "#fbbf24"; 
+                resultTxt.style.color = "#fbbf24";
             } else if (status === "win") {
                 resultTxt.innerText = "YOU WIN!";
-                resultTxt.style.color = "#4ade80"; 
-                // NPC 顯示輸的圖片
+                resultTxt.style.color = "#4ade80";
                 npcImg.src = `images/rps/rps_lose${randIdx}.webp`;
             } else {
                 resultTxt.innerText = "YOU LOSE!";
-                resultTxt.style.color = "#f87171"; 
-                // NPC 顯示贏的圖片
+                resultTxt.style.color = "#f87171";
                 npcImg.src = `images/rps/rps_win${randIdx}.webp`;
             }
 
             // 5. 結束重置
             await new Promise(r => setTimeout(r, 2500));
+
+            // 💡 恢復所有按鈕顯示
+            allButtons.forEach(btn => {
+                btn.style.visibility = 'visible';
+            });
+
             npcImg.src = 'images/rps/rps_ready.webp';
-            resultTxt.innerText = "READY?";
+            resultTxt.innerText = "剪刀~~石頭~~";
             resultTxt.style.color = "white";
             isPlaying = false;
         }
     </script>
 </body>
+
 </html>
