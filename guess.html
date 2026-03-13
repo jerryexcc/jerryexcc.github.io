@@ -181,16 +181,23 @@
                         })
                         const data = await response.json()
 
-                        setTimeout(() => {
-                            judge(data.aiGuess, 'LLM')
-                            isLLMTurn.value = false
-                        }, 1500)
+                        // 🔍 這裡要確保名稱與 GAS 回傳的一模一樣
+                        if (data && data.aiGuess !== undefined) {
+                            setTimeout(() => {
+                                // 將 GAS 回傳的數字丟進裁判邏輯
+                                judge(parseInt(data.aiGuess), 'LLM')
+                                if (data.aiMessage) message.value = data.aiMessage
+                                isLLMTurn.value = false
+                            }, 1500)
+                        } else {
+                            throw new Error('資料格式不正確')
+                        }
                     } catch (e) {
+                        console.error('GAS 請求失敗:', e)
+                        // 備援：如果出錯，至少給一個數字讓遊戲繼續
                         const fallback = Math.floor((min.value + max.value) / 2)
-                        setTimeout(() => {
-                            judge(fallback, 'LLM')
-                            isLLMTurn.value = false
-                        }, 1000)
+                        judge(fallback, 'LLM')
+                        isLLMTurn.value = false
                     }
                 }
 
