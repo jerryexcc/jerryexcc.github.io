@@ -3,12 +3,21 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
     <title>謳歌戰記 - 終極密碼</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;900&display=swap') body {
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;900&display=swap');
+
+        html, body {
+            height: 100%;
+            height: -webkit-fill-available;
+            overflow: hidden;
+            background-color: #000;
+        }
+
+        body {
             font-family: 'Noto Sans TC', sans-serif
         }
 
@@ -20,7 +29,7 @@
 
         .character-img {
             filter: drop-shadow(0 0 10px rgba(0, 0, 0, 0.5));
-            transition: all 0.5s ease-out;
+            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
         .character-thinking {
@@ -28,85 +37,99 @@
             transform: scale(1.05);
         }
 
-        .fade-enter-active,
-        .fade-leave-active {
-            transition: opacity 0.5s
+        /* 防止 iOS 點擊輸入框時畫面縮放 */
+        input {
+            font-size: 16px !important;
         }
 
-        .fade-enter-from,
-        .fade-leave-to {
-            opacity: 0
+        @media (min-width: 640px) {
+            input {
+                font-size: 1.5rem !important;
+            }
         }
+
+        .fade-enter-active, .fade-leave-active { transition: opacity 0.4s }
+        .fade-enter-from, .fade-leave-to { opacity: 0 }
     </style>
 </head>
 
-<body class="bg-black overflow-hidden">
+<body class="bg-black">
 
-    <div id="app" class="relative w-screen h-screen bg-scene flex flex-col items-center justify-between p-6">
+    <div id="app" class="relative w-screen h-full bg-scene flex flex-col items-center justify-between p-4 sm:p-6">
 
-        <div
-            class="z-20 w-full max-w-md bg-black/60 backdrop-blur-lg rounded-2xl border border-white/20 p-5 shadow-2xl text-center">
-            <h1 class="text-yellow-400 font-black text-xl tracking-widest mb-2">終極密碼 1 - 1000</h1>
+        <div class="z-20 w-full max-w-md bg-black/60 backdrop-blur-lg rounded-2xl border border-white/20 p-4 sm:p-5 shadow-2xl text-center">
+            <h1 class="text-yellow-400 font-black text-lg sm:text-xl tracking-widest mb-2 uppercase">Ultimate Code</h1>
             <div class="flex justify-between items-center px-4">
                 <div class="text-center">
-                    <span class="block text-xs text-blue-300 uppercase">Min</span>
-                    <span class="text-3xl font-black text-blue-400">{{ min }}</span>
+                    <span class="block text-[10px] text-blue-300 uppercase font-bold">Min</span>
+                    <span class="text-2xl sm:text-3xl font-black text-blue-400">{{ min }}</span>
                 </div>
-                <div class="text-white/30 text-2xl font-light">VS</div>
+                <div class="text-white/20 text-xl font-light italic">vs</div>
                 <div class="text-center">
-                    <span class="block text-xs text-red-300 uppercase">Max</span>
-                    <span class="text-3xl font-black text-red-400">{{ max }}</span>
+                    <span class="block text-[10px] text-red-300 uppercase font-bold">Max</span>
+                    <span class="text-2xl sm:text-3xl font-black text-red-400">{{ max }}</span>
                 </div>
             </div>
         </div>
 
-        <div class="relative flex-1 w-full flex items-center justify-center">
+        <div class="relative flex-1 w-full min-h-0 flex items-center justify-center">
             <img src="https://jerryexcc.github.io/images/rps/rps_ready.webp"
-                class="character-img h-[55vh] object-contain" :class="{ 'character-thinking': isLLMTurn }">
+                class="character-img h-full max-h-[45vh] sm:max-h-[55vh] object-contain"
+                :class="{ 'character-thinking': isLLMTurn }">
 
             <transition name="fade">
                 <div v-if="message"
-                    class="absolute top-1/4 bg-white text-black px-6 py-2 rounded-full font-bold shadow-xl border-2 border-gray-200 after:content-[''] after:absolute after:top-full after:left-1/2 after:-translate-x-1/2 after:border-8 after:border-transparent after:border-t-white">
+                    class="absolute top-[10%] sm:top-1/4 bg-white/95 text-black px-5 py-2 rounded-full font-bold shadow-2xl border-2 border-gray-100 text-sm sm:text-base whitespace-nowrap z-30">
                     {{ message }}
+                    <div class="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-white/95"></div>
                 </div>
             </transition>
         </div>
 
-        <div class="z-20 w-full max-w-md bg-gradient-to-t from-black via-black/80 to-transparent p-6 rounded-t-3xl">
+        <div class="z-20 w-full max-w-md bg-gradient-to-t from-black via-black/80 to-transparent p-4 sm:p-6 pb-8 sm:pb-10 rounded-t-3xl">
+           
             <div v-if="!gameOver">
-                <p class="text-center text-xs text-white/50 mb-3 tracking-widest">
-                    {{ isLLMTurn ? '謳歌正在連結大腦中...' : '換你猜測範圍內的數字' }}
+                <p class="text-center text-[10px] sm:text-xs text-white/40 mb-3 tracking-[0.2em] font-medium uppercase">
+                    {{ isLLMTurn ? 'Oka is analyzing...' : 'It\'s your turn to guess' }}
                 </p>
-                <div class="flex gap-2">
-                    <input v-model.number="userGuess" type="number" @keyup.enter="handleUserAction"
+                <div class="flex gap-3">
+                    <input v-model.number="userGuess"
+                        type="number"
+                        inputmode="numeric"
+                        pattern="[0-9]*"
+                        @keyup.enter="handleUserAction"
                         :disabled="isLLMTurn"
-                        class="flex-1 bg-white/10 border border-white/20 rounded-xl px-4 py-4 text-white text-3xl font-black text-center outline-none focus:border-yellow-500 transition-all"
+                        class="flex-1 min-w-0 bg-white/10 border border-white/20 rounded-2xl px-4 py-3 sm:py-4 text-white text-2xl font-black text-center outline-none focus:border-yellow-500 transition-all placeholder:text-white/10"
                         placeholder="---">
+                   
                     <button @click="handleUserAction" :disabled="isLLMTurn || !userGuess"
-                        class="bg-yellow-500 hover:bg-yellow-400 disabled:bg-gray-700 text-black font-black px-8 py-4 rounded-xl shadow-lg active:scale-95 transition-all">
-                        送出
+                        class="bg-yellow-500 hover:bg-yellow-400 disabled:bg-gray-700 disabled:text-white/30 text-black font-black px-6 sm:px-8 py-3 sm:py-4 rounded-2xl shadow-lg active:scale-95 transition-all whitespace-nowrap">
+                        GO
                     </button>
                 </div>
             </div>
 
-            <div v-else class="text-center p-4">
-                <h2 class="text-5xl font-black mb-3 italic"
-                    :class="winner === 'User' ? 'text-green-400' : 'text-purple-500'">
-                    {{ winner === 'User' ? 'WIN!' : 'LOSE' }}
+            <div v-else class="text-center py-4">
+                <h2 class="text-4xl sm:text-5xl font-black mb-3 italic tracking-tighter"
+                    :class="winner === 'User' ? 'text-green-400' : 'text-pink-500'">
+                    {{ winner === 'User' ? 'VICTORY!' : 'DEFEATED' }}
                 </h2>
-                <p class="text-white/70 mb-6 px-4 italic">" {{ endMsg }} "</p>
+                <div class="inline-block bg-yellow-500/10 border border-yellow-500/20 px-4 py-1 rounded-full mb-4">
+                   <span class="text-yellow-400 text-xs font-bold tracking-widest uppercase">Target Code: {{ targetNumber }}</span>
+                </div>
+                <p class="text-white/70 text-sm sm:text-base mb-6 px-2 italic leading-relaxed">" {{ endMsg }} "</p>
                 <button @click="resetGame"
-                    class="w-full bg-white text-black py-4 rounded-xl font-black hover:bg-gray-200 transition-all">
-                    重啟戰局
+                    class="w-full bg-white text-black py-4 rounded-2xl font-black hover:bg-gray-200 active:scale-[0.98] transition-all shadow-xl">
+                    再陪我玩一次嘛❤️
                 </button>
             </div>
         </div>
+
     </div>
 
     <script>
         const { createApp, ref, onMounted } = Vue
 
-        // 🔗 記得換成你的 GAS URL
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbx6U-N8GTDGJTTKqNkcL6zezRh-3UruRWE7RfqpLLm9I4P05A-BZ8Il0UQcyImCcMd2dA/exec'
 
         createApp({
@@ -136,19 +159,22 @@
                     if (guess === targetNumber.value) {
                         gameOver.value = true
                         winner.value = player
-                        endMsg.value = player === 'User'
-                            ? "竟然被你猜中了...這不可能。"
-                            : "這就是機率的終點，你輸了。"
-                        message.value = "BOOM!"
+                        if (player === 'User') {
+                            message.value = "竟然被你猜中了...❤️"
+                            endMsg.value = "恭喜你！答案確實是 " + targetNumber.value + "，你是這場遊戲的贏家唷♪"
+                        } else {
+                            message.value = "啊哈哈～我贏了唷！♪"
+                            endMsg.value = "真可惜～謳歌精準地抓到了 " + targetNumber.value + " 呢！小笨蛋輸了唷❤️"
+                        }
                         return true
                     }
 
                     if (guess < targetNumber.value) {
                         min.value = Math.max(min.value, guess)
-                        message.value = player === 'User' ? "太小了！" : `謳歌猜 ${guess}，太小。`
+                        message.value = player === 'User' ? "太小了唷，加油❤️" : `謳歌猜了 ${guess}，太小。`
                     } else {
                         max.value = Math.min(max.value, guess)
-                        message.value = player === 'User' ? "太大了！" : `謳歌猜 ${guess}，太大。`
+                        message.value = player === 'User' ? "哎呀～太大了啦✨" : `謳歌猜了 ${guess}，太大。`
                     }
                     return false
                 }
@@ -181,20 +207,19 @@
                         })
                         const data = await response.json()
 
-                        // 🔍 這裡要確保名稱與 GAS 回傳的一模一樣
                         if (data && data.aiGuess !== undefined) {
                             setTimeout(() => {
-                                // 將 GAS 回傳的數字丟進裁判邏輯
-                                judge(parseInt(data.aiGuess), 'LLM')
-                                if (data.aiMessage) message.value = data.aiMessage
+                                const isOkaWin = judge(parseInt(data.aiGuess), 'LLM')
+                                if (!isOkaWin && data.aiMessage) {
+                                    message.value = data.aiMessage
+                                }
                                 isLLMTurn.value = false
                             }, 1500)
                         } else {
-                            throw new Error('資料格式不正確')
+                            throw new Error('Data format error')
                         }
                     } catch (e) {
-                        console.error('GAS 請求失敗:', e)
-                        // 備援：如果出錯，至少給一個數字讓遊戲繼續
+                        console.error('GAS Error:', e)
                         const fallback = Math.floor((min.value + max.value) / 2)
                         judge(fallback, 'LLM')
                         isLLMTurn.value = false
@@ -204,7 +229,7 @@
                 onMounted(initGame)
 
                 return {
-                    min, max, userGuess, isLLMTurn, message, gameOver, winner, endMsg,
+                    min, max, userGuess, isLLMTurn, message, gameOver, winner, endMsg, targetNumber,
                     handleUserAction, resetGame: initGame
                 }
             }
