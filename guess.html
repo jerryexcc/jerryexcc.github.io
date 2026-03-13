@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>謳歌戰記 - 終極密碼</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;900&display=swap') body {
+            font-family: 'Noto Sans TC', sans-serif
+        }
+
+        .bg-scene {
+            background-image: url('https://jerryexcc.github.io/images/bg/bg.webp');
+            background-size: cover;
+            background-position: center;
+        }
+
+        .character-img {
+            filter: drop-shadow(0 0 10px rgba(0, 0, 0, 0.5));
+            transition: all 0.5s ease-out;
+        }
+
+        .character-thinking {
+            filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.8)) brightness(1.2);
+            transform: scale(1.05);
+        }
+
+        .fade-enter-active,
+        .fade-leave-active {
+            transition: opacity 0.5s
+        }
+
+        .fade-enter-from,
+        .fade-leave-to {
+            opacity: 0
+        }
+    </style>
+</head>
+
+<body class="bg-black overflow-hidden">
+
+    <div id="app" class="relative w-screen h-screen bg-scene flex flex-col items-center justify-between p-6">
+
+        <div
+            class="z-20 w-full max-w-md bg-black/60 backdrop-blur-lg rounded-2xl border border-white/20 p-5 shadow-2xl text-center">
+            <h1 class="text-yellow-400 font-black text-xl tracking-widest mb-2">終極密碼 1 - 1000</h1>
+            <div class="flex justify-between items-center px-4">
+                <div class="text-center">
+                    <span class="block text-xs text-blue-300 uppercase">Min</span>
+                    <span class="text-3xl font-black text-blue-400">{{ min }}</span>
+                </div>
+                <div class="text-white/30 text-2xl font-light">VS</div>
+                <div class="text-center">
+                    <span class="block text-xs text-red-300 uppercase">Max</span>
+                    <span class="text-3xl font-black text-red-400">{{ max }}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="relative flex-1 w-full flex items-center justify-center">
+            <img src="https://jerryexcc.github.io/images/rps/rps_ready.webp"
+                class="character-img h-[55vh] object-contain" :class="{ 'character-thinking': isLLMTurn }">
+
+            <transition name="fade">
+                <div v-if="message"
+                    class="absolute top-1/4 bg-white text-black px-6 py-2 rounded-full font-bold shadow-xl border-2 border-gray-200 after:content-[''] after:absolute after:top-full after:left-1/2 after:-translate-x-1/2 after:border-8 after:border-transparent after:border-t-white">
+                    {{ message }}
+                </div>
+            </transition>
+        </div>
+
+        <div class="z-20 w-full max-w-md bg-gradient-to-t from-black via-black/80 to-transparent p-6 rounded-t-3xl">
+            <div v-if="!gameOver">
+                <p class="text-center text-xs text-white/50 mb-3 tracking-widest">
+                    {{ isLLMTurn ? '謳歌正在連結大腦中...' : '換你猜測範圍內的數字' }}
+                </p>
+                <div class="flex gap-2">
+                    <input v-model.number="userGuess" type="number" @keyup.enter="handleUserAction"
+                        :disabled="isLLMTurn"
+                        class="flex-1 bg-white/10 border border-white/20 rounded-xl px-4 py-4 text-white text-3xl font-black text-center outline-none focus:border-yellow-500 transition-all"
+                        placeholder="---">
+                    <button @click="handleUserAction" :disabled="isLLMTurn || !userGuess"
+                        class="bg-yellow-500 hover:bg-yellow-400 disabled:bg-gray-700 text-black font-black px-8 py-4 rounded-xl shadow-lg active:scale-95 transition-all">
+                        送出
+                    </button>
+                </div>
+            </div>
+
+            <div v-else class="text-center p-4">
+                <h2 class="text-5xl font-black mb-3 italic"
+                    :class="winner === 'User' ? 'text-green-400' : 'text-purple-500'">
+                    {{ winner === 'User' ? 'WIN!' : 'LOSE' }}
+                </h2>
+                <p class="text-white/70 mb-6 px-4 italic">" {{ endMsg }} "</p>
+                <button @click="resetGame"
+                    class="w-full bg-white text-black py-4 rounded-xl font-black hover:bg-gray-200 transition-all">
+                    重啟戰局
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, onMounted } = Vue
+
+        // 🔗 記得換成你的 GAS URL
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbx6U-N8GTDGJTTKqNkcL6zezRh-3UruRWE7RfqpLLm9I4P05A-BZ8Il0UQcyImCcMd2dA/exec'
+
+        createApp({
+            setup() {
+                const targetNumber = ref(0)
+                const min = ref(1)
+                const max = ref(1000)
+                const userGuess = ref(null)
+                const isLLMTurn = ref(false)
+                const message = ref("我是謳歌，由你開局。")
+                const gameOver = ref(false)
+                const winner = ref(null)
+                const endMsg = ref("")
+
+                const initGame = () => {
+                    targetNumber.value = Math.floor(Math.random() * 1000) + 1
+                    min.value = 1
+                    max.value = 1000
+                    gameOver.value = false
+                    winner.value = null
+                    isLLMTurn.value = false
+                    userGuess.value = null
+                    message.value = "由你先行，請猜一個數字。"
+                }
+
+                const judge = (guess, player) => {
+                    if (guess === targetNumber.value) {
+                        gameOver.value = true
+                        winner.value = player
+                        endMsg.value = player === 'User'
+                            ? "竟然被你猜中了...這不可能。"
+                            : "這就是機率的終點，你輸了。"
+                        message.value = "BOOM!"
+                        return true
+                    }
+
+                    if (guess < targetNumber.value) {
+                        min.value = Math.max(min.value, guess)
+                        message.value = player === 'User' ? "太小了！" : `謳歌猜 ${guess}，太小。`
+                    } else {
+                        max.value = Math.min(max.value, guess)
+                        message.value = player === 'User' ? "太大了！" : `謳歌猜 ${guess}，太大。`
+                    }
+                    return false
+                }
+
+                const handleUserAction = async () => {
+                    const val = userGuess.value
+                    if (!val || val <= min.value || val >= max.value) {
+                        message.value = `請輸入 ${min.value} ~ ${max.value}`
+                        return
+                    }
+
+                    const hit = judge(val, 'User')
+                    userGuess.value = null
+
+                    if (!hit) {
+                        isLLMTurn.value = true
+                        await askOkaAssistant()
+                    }
+                }
+
+                const askOkaAssistant = async () => {
+                    try {
+                        const response = await fetch(GAS_URL, {
+                            method: 'POST',
+                            body: JSON.stringify({
+                                action: "ultimate_number",
+                                min: min.value,
+                                max: max.value
+                            })
+                        })
+                        const data = await response.json()
+
+                        setTimeout(() => {
+                            judge(data.aiGuess, 'LLM')
+                            isLLMTurn.value = false
+                        }, 1500)
+                    } catch (e) {
+                        const fallback = Math.floor((min.value + max.value) / 2)
+                        setTimeout(() => {
+                            judge(fallback, 'LLM')
+                            isLLMTurn.value = false
+                        }, 1000)
+                    }
+                }
+
+                onMounted(initGame)
+
+                return {
+                    min, max, userGuess, isLLMTurn, message, gameOver, winner, endMsg,
+                    handleUserAction, resetGame: initGame
+                }
+            }
+        }).mount('#app')
+    </script>
+</body>
+
+</html>
